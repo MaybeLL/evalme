@@ -1,0 +1,24 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.394417ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.323583ms)
+  ✔ invalid labels roll back entire task (0.22025ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.65075ms)
+  ✔ evidence validation and grade failure preserves trial (1.278125ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.108709ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.642666ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.07075ms)
+  ✔ two connections same request and competing revisions (46.127875ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (108.125292ms)
+  ✔ close and reopen preserves records (1.154958ms)
+✔ sqlite: shared provider contract (171.041ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.61825ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (2.019542ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.17075ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 212.118541

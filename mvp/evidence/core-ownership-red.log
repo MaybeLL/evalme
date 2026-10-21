@@ -1,0 +1,42 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.369209ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.564125ms)
+  ✔ invalid labels roll back entire task (0.250125ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.737292ms)
+  ✔ evidence validation and grade failure preserves trial (1.213959ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.01325ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.724875ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.483333ms)
+  ✔ two connections same request and competing revisions (45.522ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (105.387208ms)
+  ✔ close and reopen preserves records (1.481708ms)
+✔ sqlite: shared provider contract (169.007375ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.535667ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (2.117625ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.298041ms)
+✔ SQLite: a transient writer lock retries the original request (91.972292ms)
+✖ SQLite: initialize refuses a nonempty foreign database without ownership marker (3.439792ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 308.39175
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:136:1
+✖ SQLite: initialize refuses a nonempty foreign database without ownership marker (3.439792ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:139:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'SCHEMA_INCOMPATIBLE' },
+    operator: 'rejects',
+    diff: 'simple'
+  }

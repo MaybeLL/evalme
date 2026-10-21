@@ -1,0 +1,51 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.445458ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.316209ms)
+  ✔ invalid labels roll back entire task (0.225792ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.675125ms)
+  ✔ evidence validation and grade failure preserves trial (1.188708ms)
+  ✔ immutable versions, full revision, replay before tip checks (0.973083ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.677875ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.3845ms)
+  ✔ two connections same request and competing revisions (44.602041ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (128.282792ms)
+  ✔ close and reopen preserves records (1.177792ms)
+✔ sqlite: shared provider contract (190.199667ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.57775ms)
+✖ SQLite: unknown schema and missing database are not silently initialized (1.824166ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.343666ms)
+✔ SQLite: a transient writer lock retries the original request (91.90725ms)
+✔ SQLite: initialize refuses a nonempty foreign database without ownership marker (2.285625ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 328.1025
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:113:1
+✖ SQLite: unknown schema and missing database are not silently initialized (1.824166ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    Comparison {
+  +   code: 'SCHEMA_SETUP_REQUIRED'
+  -   code: 'SCHEMA_INCOMPATIBLE'
+    }
+
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:118:105)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: EvalmeError: Initialize storage before use
+        at mapError (file:///workspace/evalme/mvp/src/core.mjs:18:92)
+        at Store.transaction (file:///workspace/evalme/mvp/src/core.mjs:53:85),
+    expected: { code: 'SCHEMA_INCOMPATIBLE' },
+    operator: 'rejects',
+    diff: 'simple'
+  }

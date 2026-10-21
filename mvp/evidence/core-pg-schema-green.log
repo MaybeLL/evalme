@@ -1,0 +1,19 @@
+{
+  "test": "PG schema owner initializes existing schema without database CREATE",
+  "permissions": {
+    "database_create": false,
+    "schema_create": true
+  },
+  "initialize": {
+    "schema_version": 1
+  },
+  "repeated_initialize": "passed",
+  "runtime_check": {
+    "schema_version": 1
+  },
+  "business_rows": {
+    "tasks": "0",
+    "trials": "0",
+    "grades": "0"
+  }
+}

@@ -1,0 +1,80 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.4025ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.2065ms)
+  ✔ invalid labels roll back entire task (0.20675ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.72975ms)
+  ✔ evidence validation and grade failure preserves trial (1.242292ms)
+  ✔ immutable versions, full revision, replay before tip checks (0.953541ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.5465ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.350584ms)
+  ✔ two connections same request and competing revisions (45.721125ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (106.671834ms)
+  ✔ close and reopen preserves records (1.428625ms)
+✔ sqlite: shared provider contract (169.582625ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.630292ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (1.807125ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.247292ms)
+✔ SQLite: a transient writer lock retries the original request (91.250458ms)
+✖ SQLite: initialize refuses a nonempty foreign database without ownership marker (6.0045ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 311.920333
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:136:1
+✖ SQLite: initialize refuses a nonempty foreign database without ownership marker (6.0045ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+
+    Buffer(8192) [Uint8Array] [
+      83,
+      81,
+      76,
+      105,
+  ...
+      0,
+  +   2,
+  +   2,
+  -   1,
+  -   1,
+      0,
+      64,
+      32,
+      32,
+      0,
+      0,
+      0,
+  +   3,
+  -   2,
+      0,
+      0,
+      0,
+      2,
+      0,
+  ...
+      0,
+  +   3,
+  -   2,
+      0,
+      46,
+      149,
+      204,
+      13,
+
+      at TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:141:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: <Buffer 53 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33 00 10 00 02 02 00 40 20 20 00 00 00 03 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 04 00 00 ... 8142 more bytes>,
+    expected: <Buffer 53 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33 00 10 00 01 01 00 40 20 20 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 04 00 00 ... 8142 more bytes>,
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

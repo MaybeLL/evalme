@@ -1,0 +1,53 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.361666ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (3.152416ms)
+  ✔ invalid labels roll back entire task (0.20875ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.622833ms)
+  ✔ evidence validation and grade failure preserves trial (1.230541ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.229792ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.014583ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (0.993125ms)
+  ✔ two connections same request and competing revisions (45.9135ms)
+  ✔ close and reopen preserves records (1.354208ms)
+✔ sqlite: shared provider contract (63.306458ms)
+✔ SQLite: real transaction failure rolls back task and labels (3.17825ms)
+✖ SQLite: unknown schema and missing database are not silently initialized (1.063625ms)
+✖ validation rejects impossible timestamps and oversized prompt (2.52025ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 12
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.256584
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:99:1
+✖ SQLite: unknown schema and missing database are not silently initialized (1.063625ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:102:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'SCHEMA_SETUP_REQUIRED' },
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at mvp/tests/core.test.mjs:107:1
+✖ validation rejects impossible timestamps and oversized prompt (2.52025ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:110:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'VALIDATION_ERROR' },
+    operator: 'rejects',
+    diff: 'simple'
+  }

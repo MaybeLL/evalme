@@ -1,0 +1,21 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+dist/
+build/
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# pi subagent scratch artifacts
+.pi-subagents/

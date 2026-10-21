@@ -1,0 +1,63 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.439625ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.732959ms)
+  ✔ invalid labels roll back entire task (0.196667ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.719375ms)
+  ✖ evidence validation and grade failure preserves trial (0.538459ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.146875ms)
+  ✖ correction chains, independent regrade, clock skew, no self feedback (1.708291ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.536ms)
+  ✔ two connections same request and competing revisions (45.503042ms)
+  ✔ close and reopen preserves records (1.3875ms)
+✖ sqlite: shared provider contract (61.879625ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.824833ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (1.770708ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.596042ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 11
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 103.794583
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:40:10
+✖ evidence validation and grade failure preserves trial (0.538459ms)
+  Error [EvalmeError]: evaluator: missing version
+      at fail (file:///workspace/evalme/mvp/src/core-validation.mjs:5:37)
+      at fields (file:///workspace/evalme/mvp/src/core-validation.mjs:7:241)
+      at normalize (file:///workspace/evalme/mvp/src/core-validation.mjs:44:3)
+      at Store.create (file:///workspace/evalme/mvp/src/core.mjs:69:35)
+      at Store.submitGrade (file:///workspace/evalme/mvp/src/core.mjs:108:249)
+      at TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:42:34)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:40:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    code: 'VALIDATION_ERROR',
+    details: {},
+    retryable: false,
+    exitCode: 2
+  }
+
+test at mvp/tests/core.test.mjs:60:10
+✖ correction chains, independent regrade, clock skew, no self feedback (1.708291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  3 !== 4
+
+      at TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:70:49)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:60:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 3,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

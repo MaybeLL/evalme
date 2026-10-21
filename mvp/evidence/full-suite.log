@@ -1,0 +1,68 @@
+
+> evalme-mvp-cli@0.1.0 test:pg
+> node scripts/test-postgres.mjs
+
+✔ CLI no-config utility, JSON errors and protocol gate (130.920333ms)
+✔ SQLite initialize and complete process-restart flow without standards (378.700792ms)
+✔ CLI refuses invalid JSON, unknown fields, overlarge stdin, and leaked inputs (107.271042ms)
+✔ PG secret preserves meaningful leading/trailing spaces (4.197459ms)
+✔ malformed config root receives a classified configuration error (1.766917ms)
+✔ missing input fails as input validation rather than unrelated missing configuration (28.9035ms)
+✔ provider-inapplicable init options fail before initializing SQLite (26.321125ms)
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.4675ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.556917ms)
+  ✔ invalid labels roll back entire task (0.27025ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.941583ms)
+  ✔ evidence validation and grade failure preserves trial (1.807333ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.453125ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (2.881833ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.972958ms)
+  ✔ two connections same request and competing revisions (43.962083ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (85.420166ms)
+  ✔ close and reopen preserves records (1.360542ms)
+✔ sqlite: shared provider contract (149.090959ms)
+▶ postgres: shared provider contract
+  ✔ schema checks and initialize are repeatable (15.218958ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (22.888875ms)
+  ✔ invalid labels roll back entire task (3.714458ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (8.864084ms)
+  ✔ evidence validation and grade failure preserves trial (23.442042ms)
+  ✔ immutable versions, full revision, replay before tip checks (15.21075ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (32.519208ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (25.786083ms)
+  ✔ two connections same request and competing revisions (15.109208ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (159.15875ms)
+  ✔ close and reopen preserves records (10.01ms)
+✔ postgres: shared provider contract (377.154458ms)
+✔ SQLite: real transaction failure rolls back task and labels (4.292458ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (1.827708ms)
+✔ validation rejects impossible timestamps and oversized prompt (2.664709ms)
+✔ SQLite: a transient writer lock retries the original request (88.396583ms)
+✔ SQLite: initialize refuses a nonempty foreign database without ownership marker (2.084417ms)
+✔ plan restricts Docker to loopback and owned resources (0.853458ms)
+✔ unknown or mismatched resources cannot be adopted (0.103667ms)
+✔ secrets are SQL escaped and application role receives no DDL (0.203542ms)
+✔ secret values are never part of public deployment plan (0.081084ms)
+✔ runtime drift cannot hide behind copied ownership labels (0.669917ms)
+✔ privilege audit detects inherited or mutated write grants (0.135667ms)
+✔ manifest comparison detects content changes even when row counts match (0.33075ms)
+✔ real PostgreSQL CLI init, privileges and process-restart learning flow (677.562625ms)
+✔ installs user skill with absolute CLI and repeats without duplicates (9.497375ms)
+✔ preserves user modifications and unknown directories (4.389833ms)
+✔ rejects invalid adapter, scope, relative executable and symlink destination (1.455417ms)
+✔ updates owned pristine files when executable changes, preserves unknown files (5.530125ms)
+✔ unknown same-name directory and symlinked parents are preserved (2.137834ms)
+✔ real PTY arrow menu chooses SQLite and persists initialized target (64.616458ms)
+✔ real PTY PostgreSQL missing connection file preserves old configuration (81.82975ms)
+✔ real PTY PostgreSQL unsafe secret permissions preserve old configuration (85.194333ms)
+✔ real PTY switching SQLite target requires displayed target and explicit confirmation (147.898333ms)
+✔ real PTY PostgreSQL menu initializes against live PG and saves only runtime identity (163.899375ms)
+ℹ tests 54
+ℹ suites 0
+ℹ pass 54
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 717.478958

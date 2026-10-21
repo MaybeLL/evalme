@@ -1,0 +1,10 @@
+{
+  "test": "PG schema owner initializes existing schema without database CREATE",
+  "permissions": {
+    "database_create": false,
+    "schema_create": true
+  },
+  "expected": "success",
+  "actual": "CONFIG_ERROR",
+  "message": "Database role lacks required permissions"
+}

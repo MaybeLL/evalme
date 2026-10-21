@@ -1,0 +1,41 @@
+▶ sqlite: shared provider contract
+  ✔ schema checks and initialize are repeatable (0.4965ms)
+  ✔ optional standards, topic normalization, idempotence, unknown fields (2.465666ms)
+  ✔ invalid labels roll back entire task (0.23925ms)
+  ✔ trial preserves answers, unknown time, independent repeat, hints (0.739125ms)
+  ✔ evidence validation and grade failure preserves trial (1.463541ms)
+  ✔ immutable versions, full revision, replay before tip checks (1.206167ms)
+  ✔ correction chains, independent regrade, clock skew, no self feedback (3.183792ms)
+  ✔ literal unicode search, no field boundary match, cursors bound to filters (1.71225ms)
+  ✔ two connections same request and competing revisions (45.566667ms)
+  ✔ actual independent processes preserve idempotency, conflicts, and lost responses (113.58125ms)
+  ✔ close and reopen preserves records (1.520792ms)
+✔ sqlite: shared provider contract (179.116917ms)
+✔ SQLite: real transaction failure rolls back task and labels (2.671ms)
+✔ SQLite: unknown schema and missing database are not silently initialized (2.383583ms)
+✖ validation rejects impossible timestamps and oversized prompt (2.895416ms)
+✔ SQLite: a transient writer lock retries the original request (83.97825ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 15
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 309.897709
+
+✖ failing tests:
+
+test at mvp/tests/core.test.mjs:121:1
+✖ validation rejects impossible timestamps and oversized prompt (2.895416ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/evalme/mvp/tests/core.test.mjs:126:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'VALIDATION_ERROR' },
+    operator: 'rejects',
+    diff: 'simple'
+  }
