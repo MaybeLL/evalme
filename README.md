@@ -15,6 +15,8 @@ curl -fsSL https://raw.githubusercontent.com/MaybeLL/evalme/main/mvp/scripts/ins
 
 安装器固定使用当前兼容的 Node 绝对路径，安装 CLI，并调用 CLI 的共享 Skill 安装逻辑，将 Skill 安装到 `~/.agents/skills/evalme-mvp`。不改 shell 配置或系统默认 Node。安装后检查实际命令解析：PATH 就绪时提示直接运行 `evalme-mvp init`；否则提供当前 shell 的 PATH 配置指引，并保留绝对路径作为立即可用的入口。同名命令优先匹配时会提示冲突。Node 被移动或删除后需重新运行安装器。
 
+初始化使用 Clack 中文交互向导：纵向单选，↑/↓ 切换、Enter 确认；密码隐藏输入，Ctrl+C 取消。`--json` 和 `--non-interactive` 保持机器接口，不进入向导。
+
 初始化选择：
 
 - **SQLite**：本机保存，直接使用默认位置即可。

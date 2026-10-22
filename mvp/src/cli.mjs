@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import { Writable } from "node:stream";
+import {interactive, confirmReplacement} from "./init-prompts.mjs";
 import { VERSION, compatibleNode, runtimeHint } from "./runtime.mjs";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createInterface } from "node:readline/promises";
 import {
   AppError,
   invalid,
@@ -114,100 +113,6 @@ async function input(flags) {
     throw invalid("Expected a JSON object.");
   }
 }
-async function menu() {
-  process.stderr.write("Choose database (↑/↓, Enter):\n");
-  let index = 0;
-  const names = ["SQLite", "PostgreSQL"];
-  const paint = () =>
-    process.stderr.write(
-      `\r\x1b[2K${index === 0 ? "›" : " "} SQLite   ${index === 1 ? "›" : " "} PostgreSQL`,
-    );
-  paint();
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-  try {
-    return await new Promise((resolve, reject) => {
-      const listener = (b) => {
-        const s = b.toString();
-        if (s === "\u0003") {
-          process.stdin.off("data", listener);
-          reject(invalid("Cancelled."));
-        } else if (s.includes("\r") || s.includes("\n")) {
-          process.stdin.off("data", listener);
-          resolve(index === 0 ? "sqlite" : "postgres");
-        } else if (s.includes("\x1b[A") || s.includes("\x1b[B")) {
-          index = 1 - index;
-          paint();
-        }
-      };
-      process.stdin.on("data", listener);
-    });
-  } finally {
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
-    process.stderr.write("\n");
-  }
-}
-async function interactive(flags) {
-  if (flags.provider && (flags.provider === "sqlite" || flags["connection-file"] || flags["non-interactive"] || flags.json)) return flags;
-  if (flags.json || flags["non-interactive"] || !process.stdin.isTTY)
-    throw invalid(
-      "Non-interactive init requires --provider and connection options.",
-    );
-  flags.provider ||= await menu();
-  let muted = false;
-  const output = new Writable({write(chunk, enc, next) {if (!muted) process.stderr.write(chunk); next();}});
-  output.isTTY = true;
-  const rl = createInterface({ input: process.stdin, output, terminal:true });
-  try {
-    if (flags.provider === "sqlite")
-      flags.path =
-        (await rl.question("SQLite absolute path (Enter for default): ")) ||
-        undefined;
-    else {
-      const existing = await rl.question(
-        "Runtime connection JSON path (Enter to fill fields): ",
-      );
-      if (existing) flags["connection-file"] = existing;
-      else {
-        const host = await rl.question("PostgreSQL host: ");
-        const port = Number((await rl.question("Port [5432]: ")) || 5432);
-        const database = (await rl.question("Database [evalme]: ")) || "evalme";
-        const user =
-          (await rl.question("Runtime user [evalme_app]: ")) || "evalme_app";
-        process.stderr.write("Password (hidden): ");
-        muted = true;
-        try {flags._password = await rl.question("");}
-        finally {muted = false;process.stderr.write("\n");}
-        const tls = await rl.question(
-          "TLS: verify-full [default] or none (local/private tailnet only): ",
-        );
-        if (tls && !["verify-full", "none"].includes(tls))
-          throw invalid("Invalid TLS choice.");
-        flags._connectionValues = {
-          host,
-          port,
-          database,
-          user,
-          ssl: tls === "none" ? false : "verify-full",
-        };
-        if (tls !== "none") {
-          const ca = await rl.question(
-            "CA certificate path (Enter for system roots): ",
-          );
-          if (ca) flags._connectionValues.ca_file = ca;
-        }
-      }
-      flags["admin-connection-file"] =
-        (await rl.question(
-          "Private admin connection JSON path for schema setup (optional): ",
-        )) || undefined;
-    }
-    return flags;
-  } finally {
-    rl.close();
-  }
-}
 export async function main(argv = process.argv.slice(2)) {
   let flags = {},
     store;
@@ -265,19 +170,7 @@ export async function main(argv = process.argv.slice(2)) {
           flags.provider === "sqlite"
             ? flags.path
             : flags._connectionValues?.host || flags["connection-file"];
-        const rl = createInterface({
-          input: process.stdin,
-          output: process.stderr,
-        });
-        let answer;
-        try {
-          answer = await rl.question(
-            `Replace saved connection with ${target}? Existing data is retained. [y/N] `,
-          );
-        } finally {
-          rl.close();
-        }
-        if (!/^y(es)?$/i.test(answer.trim()))
+        if (!(await confirmReplacement(target)))
           throw new AppError("CONFIG_CONFLICT", "Configuration unchanged.", 4);
         flags["replace-config"] = true;
         return emit(await initialize(flags), flags);

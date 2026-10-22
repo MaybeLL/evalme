@@ -13,9 +13,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 const cli = fileURLToPath(new URL("../src/cli.mjs", import.meta.url));
 const python = String.raw`
-import os,sys,json,pty,select,time,re,signal
+import os,sys,json,pty,select,time,re,signal,fcntl,termios,struct
 spec=json.loads(sys.argv[1]); pid,fd=pty.fork()
 if pid==0:
+ fcntl.ioctl(0,termios.TIOCSWINSZ,struct.pack('HHHH',40,120,0,0))
  os.execv(spec['node'],[spec['node'],spec['cli'],'init','--config',spec['config']])
 output=''; cursor=0; error=None; status=None
 def receive(deadline):
@@ -26,7 +27,7 @@ def receive(deadline):
    try: data=os.read(fd,65536)
    except OSError: return False
    if not data:return False
-   output+=data.decode('utf-8','replace'); return True
+   output+=re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', data.decode('utf-8','replace')); return True
  return False
 try:
  for step in spec['steps']:
@@ -34,7 +35,7 @@ try:
   while True:
    found=re.search(step['expect'],output[cursor:],re.I)
    if found:
-    cursor+=found.end();os.write(fd,step['send'].encode());break
+    cursor+=found.end();os.write(fd,step['send'].replace('\n','\r').encode());break
    if not receive(deadline):raise RuntimeError('Missing prompt: '+step['expect'])
  deadline=time.monotonic()+8
  while receive(deadline):pass
@@ -69,13 +70,13 @@ function tty(config, steps) {
   return JSON.parse(r.stdout);
 }
 const selectSQLite = [
-  { expect: "› SQLite", send: "\x1b[B" },
-  { expect: "› PostgreSQL", send: "\x1b[A" },
-  { expect: "› SQLite", send: "\r" },
+  { expect: "● SQLite", send: "\x1b[B" },
+  { expect: "● PostgreSQL", send: "\x1b[A" },
+  { expect: "● SQLite", send: "\r" },
 ];
 const selectPG = [
-  { expect: "› SQLite", send: "\x1b[B" },
-  { expect: "› PostgreSQL", send: "\r" },
+  { expect: "● SQLite", send: "\x1b[B" },
+  { expect: "● PostgreSQL", send: "\r" },
 ];
 function initOld(config, path) {
   const r = spawnSync(
@@ -101,7 +102,7 @@ test("real PTY arrow menu chooses SQLite and persists initialized target", (t) =
     db = join(dir, "new.sqlite");
   const r = tty(config, [
     ...selectSQLite,
-    { expect: "SQLite absolute path", send: db + "\n" },
+    { expect: "SQLite 文件绝对路径", send: db + "\n" },
   ]);
   assert.equal(r.error, null, r.output);
   assert.equal(r.status, 0, r.output);
@@ -115,10 +116,10 @@ test("real PTY PostgreSQL missing connection file preserves old configuration", 
   const r = tty(config, [
     ...selectPG,
     {
-      expect: "Runtime connection JSON path",
+      expect: "已有连接 JSON 路径",
       send: join(dir, "missing.json") + "\n",
     },
-    { expect: "admin connection JSON path", send: "\n" },
+    { expect: "管理员连接 JSON 路径", send: "\n" },
   ]);
   assert.equal(r.error, null, r.output);
   assert.equal(r.status, 5, r.output);
@@ -145,8 +146,8 @@ test("real PTY PostgreSQL unsafe secret permissions preserve old configuration",
   );
   const r = tty(config, [
     ...selectPG,
-    { expect: "Runtime connection JSON path", send: connection + "\n" },
-    { expect: "admin connection JSON path", send: "\n" },
+    { expect: "已有连接 JSON 路径", send: connection + "\n" },
+    { expect: "管理员连接 JSON 路径", send: "\n" },
   ]);
   assert.equal(r.error, null, r.output);
   assert.equal(r.status, 5, r.output);
@@ -161,18 +162,18 @@ test("real PTY switching SQLite target requires displayed target and explicit co
   const before = readFileSync(config, "utf8");
   const steps = [
     ...selectSQLite,
-    { expect: "SQLite absolute path", send: next + "\n" },
+    { expect: "SQLite 文件绝对路径", send: next + "\n" },
   ];
   const no = tty(config, [
     ...steps,
-    { expect: String.raw`\[y/N\]`, send: "no\n" },
+    { expect: "将连接配置替换为", send: "\r" },
   ]);
   assert.equal(no.error, null, no.output);
   assert.equal(readFileSync(config, "utf8"), before);
   assert.equal(existsSync(next), false);
   const yes = tty(config, [
     ...steps,
-    { expect: String.raw`\[y/N\]`, send: "yes\n" },
+    { expect: "将连接配置替换为", send: "y\r" },
   ]);
   assert.equal(yes.error, null, yes.output);
   assert.equal(yes.status, 0, yes.output);
@@ -186,7 +187,7 @@ test("real PTY switching SQLite target requires displayed target and explicit co
 test('real PTY PostgreSQL menu initializes against live PG and saves only runtime identity',{skip:!process.env.EVALME_TEST_PG_CONFIG},t=>{
  const {config}=fixture(t),connectionPath=process.env.EVALME_TEST_PG_CONFIG;
  const expected=JSON.parse(readFileSync(connectionPath,'utf8'));
- const r=tty(config,[...selectPG,{expect:'Runtime connection JSON path',send:connectionPath+'\n'},{expect:'admin connection JSON path',send:(process.env.EVALME_TEST_PG_ADMIN_CONFIG||'')+'\n'}]);
+ const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:connectionPath+'\n'},{expect:'管理员连接 JSON 路径',send:(process.env.EVALME_TEST_PG_ADMIN_CONFIG||'')+'\n'}]);
  assert.equal(r.error,null,r.output);assert.equal(r.status,0,r.output);
  const saved=JSON.parse(readFileSync(config,'utf8'));
  assert.equal(saved.provider,'postgres');assert.equal(saved.host,expected.host);assert.equal(saved.port,expected.port);assert.equal(saved.database,expected.database);assert.equal(saved.user,expected.user);assert.equal(saved.secret_file,expected.secret_file);
@@ -200,14 +201,14 @@ test('guided PostgreSQL hides password and saves managed credentials',{skip:!pro
  const c=JSON.parse(readFileSync(process.env.EVALME_TEST_PG_CONFIG,'utf8'));
  const password=readFileSync(c.secret_file,'utf8').replace(/\r?\n$/,'');
  const steps=[...selectPG,
- {expect:'Runtime connection JSON path',send:'\n'},
- {expect:'PostgreSQL host:',send:c.host+'\n'},
- {expect:'Port',send:String(c.port)+'\n'},
- {expect:'Database',send:c.database+'\n'},
- {expect:'Runtime user',send:c.user+'\n'},
- {expect:'Password \\(hidden\\)',send:password+'\n'},
- {expect:'TLS:',send:'none\n'},
- {expect:'admin connection JSON path',send:'\n'}];
+ {expect:'已有连接 JSON 路径',send:'\n'},
+ {expect:'PostgreSQL 地址',send:c.host+'\n'},
+ {expect:'端口',send:String(c.port)+'\n'},
+ {expect:'数据库名称',send:c.database+'\n'},
+ {expect:'应用用户名',send:c.user+'\n'},
+ {expect:'数据库密码',send:password+'\n'},
+ {expect:'TLS 连接方式',send:'\x1b[B\r'},
+ {expect:'管理员连接 JSON 路径',send:'\n'}];
  const r=tty(config,steps);
  assert.ok(!r.output.includes(password),'Password must not appear in terminal output');
  assert.equal(r.error,null);assert.equal(r.status,0);
@@ -219,9 +220,29 @@ test('guided PostgreSQL hides password and saves managed credentials',{skip:!pro
 });
 test('guided PostgreSQL cancellation never persists or echoes password',t=>{
  const {dir,config}=fixture(t);const password='synthetic-private-password';
- const r=tty(config,[...selectPG,{expect:'Runtime connection JSON path',send:'\n'},
- {expect:'PostgreSQL host:',send:'127.0.0.1\n'},{expect:'Port',send:'1\n'},
- {expect:'Database',send:'\n'},{expect:'Runtime user',send:'\n'},
- {expect:'Password \\(hidden\\)',send:password+'\n'},{expect:'TLS:',send:'invalid\n'}]);
+ const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:'\n'},
+ {expect:'PostgreSQL 地址',send:'127.0.0.1\n'},{expect:'端口',send:'1\n'},
+ {expect:'数据库名称',send:'\n'},{expect:'应用用户名',send:'\n'},
+ {expect:'数据库密码',send:password+'\n'},{expect:'TLS 连接方式',send:'\x03'}]);
  assert.ok(!r.output.includes(password));assert.equal(r.error,null);assert.notEqual(r.status,0);assert.equal(existsSync(config),false);
+});
+
+test('Clack renders vertical radio choices and cancels without saving', t => {
+ const {config}=fixture(t);
+ const r=tty(config,[{expect:'○ PostgreSQL',send:'\x03'}]);
+ assert.equal(r.error,null,r.output);
+ assert.match(r.output,/● SQLite[^\n]*\n[^\n]*○ PostgreSQL/);
+ assert.match(r.output,/已取消/);
+ assert.equal(r.status,130);
+ assert.equal(existsSync(config),false);
+});
+test('Clack validates PostgreSQL port before continuing', t => {
+ const {config}=fixture(t);
+ const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:'\r'},
+ {expect:'PostgreSQL 地址',send:'127.0.0.1\r'},
+ {expect:'端口',send:'70000\r'},
+ {expect:'端口必须是',send:'\x03'}]);
+ assert.equal(r.error,null,r.output);
+ assert.equal(r.status,130);
+ assert.equal(existsSync(config),false);
 });
