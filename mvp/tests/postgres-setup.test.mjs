@@ -13,19 +13,20 @@ import {fileURLToPath} from 'node:url';
 const port=Number(process.env.EVALME_SETUP_PG_PORT);
 const quote=s=>'"'+s.replaceAll('"','""')+'"';
 async function fixture(t,{user}={}) {
- const id=randomUUID().replaceAll('-','');const database='setup_'+id;user ||= 'app_'+id;
+ const id=randomUUID().replaceAll('-','');const database='setup_'+id;const owner='owner_'+id;user ||= 'app_'+id;
  const root={provider:'postgres',host:'127.0.0.1',port,user:'postgres',database:'postgres',ssl:false};
  const c=new pg.Client(root);await c.connect();
  const dir=mkdtempSync(join(tmpdir(),'evalme-pg-init-'));
- await c.query(`CREATE ROLE ${quote(user)} LOGIN`);await c.query(`CREATE DATABASE ${quote(database)}`);
- t.after(async()=>{await c.query(`DROP DATABASE ${quote(database)} WITH (FORCE)`);await c.query(`DROP ROLE ${quote(user)}`);await c.end();rmSync(dir,{recursive:true,force:true});});
+ await c.query(`CREATE ROLE ${quote(user)} LOGIN`);await c.query(`CREATE ROLE ${quote(owner)} LOGIN`);await c.query(`CREATE DATABASE ${quote(database)}`);
+ t.after(async()=>{await c.query(`DROP DATABASE ${quote(database)} WITH (FORCE)`);await c.query(`DROP ROLE ${quote(user)}`);await c.query(`DROP ROLE ${quote(owner)}`);await c.end();rmSync(dir,{recursive:true,force:true});});
  const admin={...root,database};const runtime={...admin,user,password:'synthetic'};
+ await withPg(admin,c=>c.query(`CREATE SCHEMA evalme AUTHORIZATION ${quote(owner)}`));
  const secret=join(dir,'secret');writeFileSync(secret,'synthetic',{mode:0o600});
  const cfg=join(dir,'config.json');const connection=join(dir,'connection.json');
  const saved={host:runtime.host,port,database,user,secret_file:secret,ssl:false};
  writeFileSync(connection,JSON.stringify(saved),{mode:0o600});
  const flags={provider:'postgres',config:cfg,'connection-file':connection};
- return {dir,admin,runtime,cfg,flags,saved,sql:sql=>withPg(admin,c=>c.query(sql))};
+ return {dir,owner,admin,runtime,cfg,flags,saved,sql:sql=>withPg(admin,c=>c.query(sql))};
 }
 test('PostgreSQL initialization state and transactional setup',{skip:!port},async t=>{
  await t.test('empty database requires explicit admin; concurrent initialization is complete and repeatable',async t=>{
@@ -38,7 +39,7 @@ test('PostgreSQL initialization state and transactional setup',{skip:!port},asyn
   await assertRuntimePrivileges(f.runtime,{requireTables:true});
   await initialize(f.flags);
   assert.equal(JSON.parse(readFileSync(f.cfg)).user,f.runtime.user);
-  const expected=JSON.parse(readFileSync(new URL('../src/providers/postgres-schema-contract.json',import.meta.url)));
+  const expected=JSON.parse(readFileSync(new URL('../src/providers/postgres-schema-v2.json',import.meta.url)));
   assert.equal(expected.source,contractSource());
   assert.deepEqual(await withPg(f.admin,structure),expected.structure);
   assert.equal((await f.sql(`SELECT has_table_privilege('${f.runtime.user}','evalme.schema_meta','INSERT') AS ok`)).rows[0].ok,false);
@@ -61,14 +62,14 @@ test('PostgreSQL initialization state and transactional setup',{skip:!port},asyn
  });
  await t.test('partial tables, unknown objects and structural drift never auto-repair',async t=>{
   const f=await fixture(t);
-  await f.sql('CREATE SCHEMA evalme; CREATE TABLE evalme.unrelated(id int)');
+  await f.sql('CREATE TABLE evalme.unrelated(id int)');
   await assert.rejects(initializePostgres(f.admin,f.runtime),{code:'SCHEMA_INCOMPATIBLE'});
-  await f.sql('DROP SCHEMA evalme CASCADE');await initializePostgres(f.admin,f.runtime);
+  await f.sql(`DROP SCHEMA evalme CASCADE; CREATE SCHEMA evalme AUTHORIZATION ${quote(f.owner)}`);await initializePostgres(f.admin,f.runtime);
   for(const [change,restore] of [
    ['DROP INDEX evalme.trials_task_order','CREATE INDEX trials_task_order ON evalme.trials(task_id,created_at,id)'],
-   ['ALTER TABLE evalme.tasks DROP CONSTRAINT tasks_family_id_fkey','ALTER TABLE evalme.tasks ADD CONSTRAINT tasks_family_id_fkey FOREIGN KEY(family_id) REFERENCES evalme.tasks(id)'],
+   ['ALTER TABLE evalme.tasks DROP CONSTRAINT tasks_family_id_fkey','ALTER TABLE evalme.tasks ADD CONSTRAINT tasks_family_id_fkey FOREIGN KEY(family_id) REFERENCES evalme.tasks(id) DEFERRABLE INITIALLY IMMEDIATE'],
    ['ALTER TABLE evalme.topics ALTER COLUMN name TYPE varchar','ALTER TABLE evalme.topics ALTER COLUMN name TYPE text'],
-   ['DELETE FROM evalme.schema_meta','INSERT INTO evalme.schema_meta VALUES(1)'],
+   ['DELETE FROM evalme.schema_meta','INSERT INTO evalme.schema_meta VALUES(2)'],
    ['CREATE VIEW evalme.unknown AS SELECT 1','DROP VIEW evalme.unknown'],
   ]) {
    await f.sql(change);await assert.rejects(inspectPostgres(f.runtime),{code:'SCHEMA_INCOMPATIBLE'});
@@ -110,8 +111,8 @@ test('PostgreSQL initialization state and transactional setup',{skip:!port},asyn
  await t.test('post-commit application verification failure is explicit and preserves old configuration',async t=>{
   const f=await fixture(t);const before=JSON.stringify({provider:'sqlite',path:join(f.dir,'old.sqlite')});writeFileSync(f.cfg,before,{mode:0o600});
   // Simulate an administrator default privilege that makes the runtime unsafe after creation.
-  await f.sql('CREATE SCHEMA evalme');
-  await f.sql(`ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA evalme GRANT DELETE ON TABLES TO ${quote(f.runtime.user)}`);
+
+  await f.sql(`ALTER DEFAULT PRIVILEGES FOR ROLE ${quote(f.owner)} IN SCHEMA evalme GRANT DELETE ON TABLES TO ${quote(f.runtime.user)}`);
   await assert.rejects(initialize({...f.flags,'replace-config':true,_admin:{user:'postgres',password:'synthetic'}}),{code:'INIT_VERIFICATION_FAILED'});
   assert.equal(readFileSync(f.cfg,'utf8'),before);assert.equal(await inspectPostgres(f.admin),'READY');
   await f.sql(`REVOKE DELETE ON ALL TABLES IN SCHEMA evalme FROM ${quote(f.runtime.user)}`);

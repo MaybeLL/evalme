@@ -6,6 +6,11 @@ import {schema, postgresGradeForeignKey} from './providers/schema.mjs';
 export const contractSource = () => createHash('sha256').update(JSON.stringify([...schema('postgres'), postgresGradeForeignKey])).digest('hex');
 export function pgError(e) {
   if (e instanceof AppError) return e;
+  if(e.code==='P0002') return new AppError('NOT_FOUND','题目不存在。',3);
+  if(e.code==='P0001' && ['DELETE_PLAN_CHANGED','DELETE_BLOCKED_REFERENCES','DELETE_ISOLATION_REQUIRED'].includes(e.message)) {
+    let details={};if(e.message==='DELETE_BLOCKED_REFERENCES')try{details={blockers:JSON.parse(e.detail)};}catch{}
+    return new AppError(e.message,e.message==='DELETE_PLAN_CHANGED'?'删除计划已变化，请重新预览确认。':e.message==='DELETE_BLOCKED_REFERENCES'?'存在异常引用，删除已阻止。':'删除需要 READ COMMITTED 事务。',5,details);
+  }
   if (e.code === '3D000') return new AppError('DB_NOT_FOUND','目标数据库不存在，请管理员先创建数据库。');
   if (e.code === '42501') return new AppError('DB_PERMISSION_DENIED','数据库权限不足，请管理员检查 schema USAGE、表权限或初始化权限。');
   if (['28P01','28000'].includes(e.code)) return new AppError('CONFIG_AUTH_FAILED','数据库认证失败，请检查用户名和密码。');
@@ -40,11 +45,14 @@ export async function inspectClient(client) {
   if (!actual.relations.length && !actual.extras.length) return 'UNINITIALIZED';
   const usage=await client.query("SELECT has_schema_privilege(current_user,'evalme','USAGE') AS ok");
   if(!usage.rows[0]?.ok) throw new AppError('DB_PERMISSION_DENIED','应用账号缺少 evalme schema USAGE 权限，请管理员处理。');
-  const expected = JSON.parse(readFileSync(new URL('./providers/postgres-schema-contract.json',import.meta.url),'utf8'));
+  if(!actual.columns.some(c=>c.table_name==='schema_meta'&&c.name==='version'))throw new AppError('SCHEMA_INCOMPATIBLE','EvalMe 版本表缺失或不完整。');
+  const {rows} = await client.query('SELECT version FROM evalme.schema_meta');
+  if (rows.length !== 1 || ![1,2].includes(rows[0].version)) throw new AppError('SCHEMA_INCOMPATIBLE','EvalMe 版本标记缺失或不兼容，请管理员处理。');
+  const v=rows[0].version;
+  const expected = JSON.parse(readFileSync(new URL(v===2?'./providers/postgres-schema-v2.json':'./providers/postgres-schema-contract.json',import.meta.url),'utf8'));
   if (expected.source !== contractSource()) throw new AppError('SCHEMA_CHECK_FAILED','Schema contract needs regeneration.');
   if (JSON.stringify(actual) !== JSON.stringify(expected.structure)) throw new AppError('SCHEMA_INCOMPATIBLE','EvalMe 结构不完整、存在未知对象或版本不兼容，请管理员处理；不会自动补表或覆盖。');
-  const {rows} = await client.query('SELECT version FROM evalme.schema_meta');
-  if (rows.length !== 1 || rows[0].version !== 1) throw new AppError('SCHEMA_INCOMPATIBLE','EvalMe 版本标记缺失或不兼容，请管理员处理。');
+  if(v===2)await (await import('./postgres-delete.mjs')).assertSecurity(client);
   return 'READY';
 }
 export async function inspectPostgres(config) {
@@ -66,6 +74,9 @@ export async function initializePostgres(admin, runtime, checkpoint = ()=>{}) {
       if (await inspectClient(client) === 'READY') {await client.query('ROLLBACK');return false;}
       const ns=await client.query("SELECT 1 FROM pg_namespace WHERE nspname='evalme'");
       if (!ns.rowCount) await client.query('CREATE SCHEMA evalme');
+      const {rows:[owner]}=await client.query("SELECT r.rolname,r.rolsuper,r.rolcreatedb,r.rolcreaterole FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE n.nspname='evalme'");
+      if(!owner || owner.rolsuper || owner.rolcreatedb || owner.rolcreaterole || owner.rolname===runtime.user)throw new AppError('MIGRATION_OWNER_REQUIRED','请管理员准备受限的非应用、非超级用户 schema owner，再初始化。');
+      await client.query('SET LOCAL ROLE "'+owner.rolname.replaceAll('"','""')+'"');
       for (const sql of schema('postgres')) {checkpoint();await client.query(sql);}
       await client.query(postgresGradeForeignKey);
       await client.query('INSERT INTO evalme.schema_meta(version) VALUES (1)');
@@ -73,6 +84,7 @@ export async function initializePostgres(admin, runtime, checkpoint = ()=>{}) {
       await client.query(`GRANT USAGE ON SCHEMA evalme TO ${role}`);
       await client.query(`GRANT SELECT ON evalme.schema_meta TO ${role}`);
       await client.query(`GRANT SELECT, INSERT ON evalme.topics,evalme.tasks,evalme.task_topics,evalme.trials,evalme.grades TO ${role}`);
+      await (await import('./postgres-delete.mjs')).installV2(client,runtime.user);
       checkpoint();
       committing=true;
       await client.query('COMMIT');

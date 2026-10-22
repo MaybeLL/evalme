@@ -102,3 +102,38 @@ EVALME_TEST_PG_ADMIN_CONFIG=/private/test-admin.json npm run test:pg
 提交之前的初始化失败会回滚建表和授权；提交之后不承诺远端回滚。没有任何失败恢复路径会删除学习数据。权限或管理认证失败可修正后重新运行向导。
 
 结构检测契约由实际 DDL 在一次性测试数据库中生成，当前在 PostgreSQL 18 验证；其他 PostgreSQL 大版本尚未验收。修改 schema 后必须重新生成 `src/providers/postgres-schema-contract.json` 并运行结构一致性测试。开发环境可指定专用测试实例 `EVALME_SETUP_PG_PORT`（127.0.0.1，测试 postgres 账号），运行 `node scripts/dev/schema-contract.mjs`；该命令会创建并删除一个随机测试数据库，不能指向生产服务。
+
+### 删除整道题（存储结构 v2）
+
+```sh
+# 任意版本 ID 都代表整个题目系列；终端显示范围，默认取消
+evalme-mvp task delete <task-id>
+# Agent / 脚本先预览，再提交同次预览返回的令牌
+evalme-mvp task delete <task-id> --dry-run --json
+evalme-mvp task delete <task-id> --confirm <plan-token> --json --non-interactive
+```
+
+删除包括全部题目版本、练习、评价、更正历史和话题关联；保留话题实体、其他题目、配置与凭据。共享 PostgreSQL 的删除影响全部连接设备。不会清理备份，也不提供恢复或单版本删除。
+
+预览返回 `family_id/title/counts/can_delete/blockers`，仅可删除时包含 `plan_token`。异常引用阻止删除，不扩删、不自动清空引用。预览后任何范围或内容变化均返回 `DELETE_PLAN_CHANGED`，须重新预览确认；`--yes`、`--force` 不能跳过删除计划。不存在的题目返回 `NOT_FOUND`。
+
+`COMMIT_UNKNOWN` 或响应丢失时，先查询题目当前状态，仍存在则重新预览；**删除不能采用新增记录的同 ID 自动重试规则**。`DB_BUSY` 表示锁等待超时/冲突，没有确认删除成功。提交前取消会回滚；提交期间断线则不承诺回滚。
+
+### 旧库启用删除能力
+
+新库 `init` 直接建立 v2。既有 v1 的连接、普通读写继续可用，不会自动迁移；`doctor` 另报 `delete_capability.ready=false`。先更新所有设备的 CLI，再备份并显式迁移：
+
+```sh
+evalme-mvp db migrate --dry-run --json
+evalme-mvp db migrate
+# 无终端的 PostgreSQL 管理流程：管理连接与应用连接必须同目标、同 TLS
+evalme-mvp db migrate --admin-connection-file /absolute/admin.json --yes --non-interactive --json
+```
+
+交互 PostgreSQL 迁移可临时输入管理用户名与隐藏密码，不保存到运行配置。扫描发现历史跨题反馈、无效版本链或更正链时，迁移全部回滚并报告 blockers；不会修写历史记录。v2 重复迁移验证后无操作，未知结构或安全设置漂移拒绝自动修复。
+
+PostgreSQL 的 `evalme` schema 及业务表需由受限管理角色拥有（非应用账号、非超级用户、无 CREATEDB/CREATEROLE）。已有部署的 `evalme_admin` 满足这一角色定位；其他部署由管理员先准备 owner，新库初始化也适用。应用账号仍只获得表 SELECT/INSERT、元数据 SELECT，以及具名预览/删除函数 EXECUTE，不能直接 UPDATE/DELETE/TRUNCATE。
+
+存储结构版本升级至 2，业务记录 `schema_version` 仍为 1。旧 CLI 不兼容 v2。`based_on_grade_id` 只允许同一题目系列，允许跨版本；跨题目反馈不再接受。
+
+结构契约 v1/v2 分别为 `src/providers/postgres-schema-contract.json` / `postgres-schema-v2.json`；v2 生成器为 `scripts/dev/schema-contract-v2.mjs`，仅用于隔离测试服务。完整设计和验收见 [删除设计](../docs/task-deletion-v1-design.md) 与 [TDD 验收](evidence/task-deletion-tdd.md)。

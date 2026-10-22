@@ -44,7 +44,7 @@ export async function connect(config, { initialize = false } = {}) {
     let owned = false;
     try {
       const marker = db.prepare("SELECT version FROM schema_meta").all();
-      owned = marker.length === 1 && marker[0].version === 1;
+      owned = marker.length === 1 && [1,2].includes(marker[0].version);
     } catch {}
     if (owned || (initialize && tables.length === 0)) {
       await chmod(config.path, 0o600);

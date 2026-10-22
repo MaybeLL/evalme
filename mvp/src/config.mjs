@@ -156,7 +156,7 @@ export async function assertRuntimePrivileges(c, {requireTables = false} = {}) {
   try {
     await client.connect();
     const { rows } = await client.query(
-      `SELECT EXISTS(SELECT 1 FROM pg_auth_members am WHERE am.member=r.oid) OR r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR r.rolbypassrls OR d.datdba=r.oid OR has_database_privilege(current_user,current_database(),'CREATE') OR EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname='evalme' AND (n.nspowner=r.oid OR has_schema_privilege(current_user,n.oid,'CREATE'))) OR EXISTS(SELECT 1 FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='evalme' AND t.relkind='r' AND (t.relowner=r.oid OR has_table_privilege(current_user,t.oid,'UPDATE,DELETE,TRUNCATE'))) AS elevated FROM pg_roles r CROSS JOIN pg_database d WHERE r.rolname=current_user AND d.datname=current_database()`,
+      `SELECT EXISTS(SELECT 1 FROM pg_auth_members am WHERE am.member=r.oid) OR r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication OR r.rolbypassrls OR d.datdba=r.oid OR has_database_privilege(current_user,current_database(),'CREATE') OR EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname='evalme' AND (n.nspowner=r.oid OR has_schema_privilege(current_user,n.oid,'CREATE'))) OR EXISTS(SELECT 1 FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='evalme' AND t.relkind='r' AND (t.relowner=r.oid OR has_table_privilege(current_user,t.oid,'UPDATE,DELETE,TRUNCATE') OR has_any_column_privilege(current_user,t.oid,'UPDATE'))) AS elevated FROM pg_roles r CROSS JOIN pg_database d WHERE r.rolname=current_user AND d.datname=current_database()`,
     );
     if (rows[0]?.elevated)
       throw new AppError(
@@ -246,11 +246,14 @@ async function initializeSaved(flags, checkpoint) {
         );
     }
     const store = await openStore(runtime);
+    let fresh=false;
     try {
+      fresh=!(await store.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).length;
       await store.initialize();
     } finally {
       await store.close();
     }
+    if(fresh) await (await import('./database.mjs')).migrateDatabase(runtime);
   } else {
     const {inspectPostgres,initializePostgres} = await import('./postgres-setup.mjs');
     await assertRuntimePrivileges(runtime);

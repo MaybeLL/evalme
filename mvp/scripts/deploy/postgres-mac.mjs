@@ -100,6 +100,7 @@ ALTER ROLE evalme_admin IN DATABASE evalme SET search_path=evalme;
 ALTER ROLE evalme_app IN DATABASE evalme SET search_path=evalme;
 ALTER DEFAULT PRIVILEGES FOR ROLE evalme_admin IN SCHEMA evalme GRANT SELECT, INSERT ON TABLES TO evalme_app;
 GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA evalme TO evalme_app;
+DO $$ BEGIN IF to_regclass('evalme.database_identity') IS NOT NULL THEN REVOKE INSERT ON evalme.database_identity FROM evalme_app; END IF; END $$;
 COMMIT;
 `;
 }
@@ -110,7 +111,7 @@ export const privilegeAuditSQL = `SELECT
  AND NOT has_schema_privilege('evalme_app','evalme','CREATE')
  AND NOT has_schema_privilege('evalme_app','public','CREATE')
  AND NOT EXISTS(SELECT FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE d.datname='evalme' AND r.rolname IN ('evalme_admin','evalme_app'))
- AND NOT EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='evalme' AND c.relkind IN ('r','p') AND has_table_privilege('evalme_app',c.oid,'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'));`;
+ AND NOT EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='evalme' AND c.relkind IN ('r','p') AND (has_table_privilege('evalme_app',c.oid,'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') OR has_any_column_privilege('evalme_app',c.oid,'UPDATE') OR (c.relname='database_identity' AND has_any_column_privilege('evalme_app',c.oid,'INSERT'))));`;
 function auditPrivileges(p) {
   const r = run([
     "exec",
@@ -133,7 +134,7 @@ function auditPrivileges(p) {
 }
 const snapshotKeys = {topics:'id',tasks:'id',task_topics:'task_id,topic_id',trials:'id',grades:'id',schema_meta:'version'};
 export function compareSnapshots(a,b) {
- const keys=Object.keys(snapshotKeys).sort();
+ const keys=[...Object.keys(snapshotKeys),...(a?.database_identity?['database_identity']:[])].sort();
  for(const obj of [a,b]) {
   if(!obj||JSON.stringify(Object.keys(obj).sort())!==JSON.stringify(keys))throw Error('Snapshot tables mismatch');
   for(const k of keys)if(!Number.isSafeInteger(obj[k]?.count)||obj[k].count<0||! /^[a-f0-9]{64}$/.test(obj[k]?.sha256??''))throw Error('Invalid snapshot metadata');
@@ -141,9 +142,10 @@ export function compareSnapshots(a,b) {
  for(const k of keys)if(a[k].count!==b[k].count||a[k].sha256!==b[k].sha256)throw Error(`Snapshot mismatch: ${k}`);
  return true;
 }
-function snapshot(p,db='evalme') {
+export function snapshot(p,db='evalme') {
  const selects=Object.entries(snapshotKeys).map(([table,key])=>`SELECT json_build_object('table','${table}','count',count(*),'sha256',encode(sha256(convert_to(coalesce(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY ${key}),''),'UTF8')),'hex')) FROM evalme.${table} t;`).join('\n');
- const sql=`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL TIME ZONE 'UTC'; ${selects} COMMIT;`;
+ const identity="SELECT json_build_object('table','database_identity','count',count(*),'sha256',encode(sha256(convert_to(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY singleton),''),'UTF8')),'hex')) FROM evalme.database_identity t";
+ const sql=`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL TIME ZONE 'UTC'; ${selects}\nSELECT ${literal(identity)} WHERE to_regclass('evalme.database_identity') IS NOT NULL\n\\gexec\nCOMMIT;`;
  const r=run(['exec','-i',p.container,'psql','-qAt','-U','postgres','-d',db,'-v','ON_ERROR_STOP=1'],sql);
  const result={};for(const line of r.stdout.trim().split('\n')){const x=JSON.parse(line);result[x.table]={count:x.count,sha256:x.sha256};}
  compareSnapshots(result,result);return result;

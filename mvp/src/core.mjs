@@ -10,7 +10,9 @@ import {
 } from "./core-validation.mjs";
 import { schema, JSON_COLUMNS, postgresGradeForeignKey } from "./providers/schema.mjs";
 export { EvalmeError } from "./core-validation.mjs";
-export const schemaVersion = 1;
+export const recordSchemaVersion = 1;
+const legacyStorageVersion = 1;
+export const supportedStorageVersions = [1, 2];
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const tables = {
   topic: "topics",
@@ -155,9 +157,10 @@ class Store {
               );
           }
         }
+        if (existing.length === 1 && Number(existing[0].version) === 2) return {schema_version:2};
         if (
           existing.length &&
-          existing.some((r) => Number(r.version) !== schemaVersion)
+          existing.some((r) => Number(r.version) !== legacyStorageVersion)
         )
           throw new EvalmeError(
             "SCHEMA_INCOMPATIBLE",
@@ -175,7 +178,7 @@ class Store {
         }
         await this.query(
           "INSERT INTO schema_meta(version) VALUES (?) ON CONFLICT(version) DO NOTHING",
-          [schemaVersion],
+          [legacyStorageVersion],
         );
         if (
           this.db.dialect === "sqlite" &&
@@ -185,18 +188,18 @@ class Store {
             "SCHEMA_INCOMPATIBLE",
             "Foreign key check failed",
           );
-        return { schema_version: schemaVersion };
+        return { schema_version: legacyStorageVersion };
       }),
     );
   }
   async schemaState() {
     const rows = await this.query("SELECT version FROM schema_meta");
-    if (rows.length !== 1 || Number(rows[0].version) !== schemaVersion)
+    if (rows.length !== 1 || !supportedStorageVersions.includes(Number(rows[0].version)))
       throw new EvalmeError(
         "SCHEMA_INCOMPATIBLE",
         "Unsupported schema version",
       );
-    return { schema_version: schemaVersion };
+    return { schema_version: Number(rows[0].version) };
   }
   async checkSchema() {
     return this.exclusive(async () => {
@@ -344,7 +347,7 @@ class Store {
         )[0].created_at;
         let data = {
           ...n,
-          schema_version: schemaVersion,
+          schema_version: recordSchemaVersion,
           payload_hash: digest,
           created_at: clock instanceof Date ? clock.toISOString() : clock,
         };
@@ -382,8 +385,13 @@ class Store {
         if (kind === "trial") {
           await this.required("tasks", n.task_id);
           let based = null;
-          if (n.based_on_grade_id)
+          if (n.based_on_grade_id) {
             based = await this.required("grades", n.based_on_grade_id);
+            const originTrial=await this.required("trials",based.trial_id);
+            const originTask=await this.required("tasks",originTrial.task_id);
+            const currentTask=await this.required("tasks",n.task_id);
+            if(originTask.family_id!==currentTask.family_id) fail("Feedback must belong to the same task family");
+          }
           if (n.supersedes_trial_id) {
             let previous = await this.required("trials", n.supersedes_trial_id);
             if (previous.task_id !== n.task_id)

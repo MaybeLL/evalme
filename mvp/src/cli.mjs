@@ -10,6 +10,7 @@ import {
   configPath,
   readConfig,
   initialize,
+  connection,
 } from "./config.mjs";
 const GLOBAL = [
   "json",
@@ -31,6 +32,7 @@ const BOOL = new Set([
   "force",
   "yes",
   "purge-config",
+  "dry-run",
 ]);
 const COMMANDS = {
   init: [
@@ -41,6 +43,8 @@ const COMMANDS = {
     "replace-config",
   ],
   "id new": [],
+  "task delete": ["dry-run","confirm"],
+  "db migrate": ["dry-run","yes","admin-connection-file"],
   doctor: [],
   upgrade: ["source"],
   uninstall: ["yes", "purge-config"],
@@ -125,14 +129,14 @@ export async function main(argv = process.argv.slice(2)) {
       return emit(
         {
           usage:
-            "evalme-mvp <init|doctor|upgrade|uninstall|id new|skill install/uninstall|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
+            "evalme-mvp <init|doctor|upgrade|uninstall|db migrate|task delete|id new|skill install/uninstall|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
           commands: COMMANDS,
           protocol: 1,
         },
         flags,
       );
     if (!Object.hasOwn(COMMANDS, key)) throw invalid("Unknown command.");
-    const count = ["init","doctor","upgrade","uninstall"].includes(key) ? 1 : key.endsWith(" get") ? 3 : 2;
+    const count = ["init","doctor","upgrade","uninstall"].includes(key) ? 1 : (key.endsWith(" get") || key === "task delete") ? 3 : 2;
     if (pos.length !== count)
       throw invalid("Wrong number of positional arguments.");
     if (
@@ -152,6 +156,41 @@ export async function main(argv = process.argv.slice(2)) {
     if (key === 'upgrade' || key === 'uninstall') {
       const {upgrade,uninstall}=await import('./lifecycle.mjs');
       return emit(await (key === 'upgrade' ? upgrade(flags) : uninstall(flags)),flags);
+    }
+    if(key === 'task delete' || key === 'db migrate') {
+      const {previewDeletion,deleteTask,migrateDatabase}=await import('./database.mjs');
+      const {confirmDelete,confirmMigration,managementCredentials}=await import('./database-prompts.mjs');
+      const runtime=readConfig(configPath(flags));
+      const tty=process.stdin.isTTY && !flags.json && !flags['non-interactive'];
+      if(key==='task delete') {
+        if(flags['dry-run'] && flags.confirm)throw invalid('--dry-run cannot be combined with --confirm.');
+        const plan=await previewDeletion(runtime,pos[2]);
+        if(flags['dry-run'])return emit(plan,flags);
+        if(!plan.can_delete)throw new AppError('DELETE_BLOCKED_REFERENCES','存在异常引用，删除已阻止。',5,{blockers:plan.blockers});
+        let token=flags.confirm;
+        if(!token) {
+          if(!tty)throw new AppError('DELETE_CONFIRMATION_REQUIRED','请先 --dry-run，再提供 --confirm <plan-token>。',5);
+          if(!(await confirmDelete(runtime,plan)))throw new AppError('CANCELLED','已取消，未删除记录。',130);
+          token=plan.plan_token;
+        }
+        return emit(await deleteTask(runtime,pos[2],token),flags);
+      }
+      if(runtime.provider==='sqlite' && flags['admin-connection-file'])throw invalid('SQLite does not use admin credentials.');
+      const plan=await migrateDatabase(runtime,{dryRun:true});
+      if(flags['dry-run'])return emit(plan,flags);
+      if(!plan.can_migrate)throw new AppError('MIGRATION_BLOCKED','历史引用异常，迁移被阻止。',5,{blockers:plan.blockers});
+      if(!plan.changed)return emit(plan,flags);
+      if(!flags.yes) {
+        if(!tty)throw new AppError('MIGRATION_CONFIRMATION_REQUIRED','检查 --dry-run 后提供 --yes 以明确升级结构。',5);
+        if(!(await confirmMigration(runtime)))throw new AppError('CANCELLED','已取消，结构未升级。',130);
+      }
+      let admin;
+      if(runtime.provider==='postgres') {
+        if(flags['admin-connection-file'])admin=connection(flags['admin-connection-file']).runtime;
+        else if(tty)admin={...runtime,...await managementCredentials()};
+        else throw new AppError('MIGRATION_ADMIN_REQUIRED','需要 --admin-connection-file。',5);
+      }
+      return emit(await migrateDatabase(runtime,{admin}),flags);
     }
     if (key === "id new") return emit({ id: randomUUID() }, flags);
     if (key === "init") {
@@ -276,7 +315,7 @@ export async function main(argv = process.argv.slice(2)) {
           ? (e instanceof AppError ? e.message : "Database operation could not be completed; retry with the original ID.")
           : e.message;
     const details = {};
-    for (const k of ["field", "existing_id", "id", "expected", "actual", "cause"])
+    for (const k of ["field", "existing_id", "id", "expected", "actual", "cause", "blockers"])
       if (e.details?.[k] !== undefined) details[k] = e.details[k];
     const result = {
       ok: false,

@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {fileURLToPath} from 'node:url';
+import {openStore} from '../src/core.mjs';
+import {records} from './helpers/deletion-records.mjs';
+const cli=fileURLToPath(new URL('../src/cli.mjs',import.meta.url));
+test('CLI migration and deletion require explicit machine confirmation',async t=>{
+ const home=mkdtempSync(join(tmpdir(),'evalme-delete-cli-'));t.after(()=>rmSync(home,{recursive:true,force:true}));
+ const runtime={provider:'sqlite',path:join(home,'db.sqlite')},config=join(home,'config.json');writeFileSync(config,JSON.stringify(runtime),{mode:0o600});
+ const s=await openStore(runtime,{initialize:true});const r=await records(s);await s.close();
+ const run=args=>{const p=spawnSync(process.execPath,[cli,...args,'--config',config,'--json','--non-interactive'],{encoding:'utf8'});return {status:p.status,body:JSON.parse(p.stdout),stderr:p.stderr};};
+ assert.equal(run(['db','migrate']).body.error.code,'MIGRATION_CONFIRMATION_REQUIRED');
+ assert.equal(run(['db','migrate','--dry-run']).body.data.from,1);
+ assert.equal(run(['task','delete',r.a,'--dry-run']).body.error.code,'DELETE_CAPABILITY_REQUIRED');
+ assert.equal(run(['db','migrate','--yes']).body.data.version,2);
+ assert.equal(run(['task','delete',r.a]).body.error.code,'DELETE_CONFIRMATION_REQUIRED');
+ const p=run(['task','delete',r.a,'--dry-run']);assert.equal(p.body.data.can_delete,true);
+ const deleted=run(['task','delete',r.a,'--confirm',p.body.data.plan_token]);assert.equal(deleted.status,0,JSON.stringify(deleted));
+ assert.equal(deleted.body.data.counts.trials,2);
+ assert.equal(run(['task','get',r.b]).status,0);
+ assert.equal(run(['task','get',r.a]).body.error.code,'NOT_FOUND');
+});

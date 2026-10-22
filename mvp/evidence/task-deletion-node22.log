@@ -1,0 +1,665 @@
+TAP version 13
+# Subtest: CLI no-config utility, JSON errors and protocol gate
+ok 1 - CLI no-config utility, JSON errors and protocol gate
+  ---
+  duration_ms: 184.293958
+  type: 'test'
+  ...
+# Subtest: SQLite initialize and complete process-restart flow without standards
+ok 2 - SQLite initialize and complete process-restart flow without standards
+  ---
+  duration_ms: 486.292708
+  type: 'test'
+  ...
+# Subtest: CLI refuses invalid JSON, unknown fields, overlarge stdin, and leaked inputs
+ok 3 - CLI refuses invalid JSON, unknown fields, overlarge stdin, and leaked inputs
+  ---
+  duration_ms: 133.564042
+  type: 'test'
+  ...
+# Subtest: PG secret preserves meaningful leading/trailing spaces
+ok 4 - PG secret preserves meaningful leading/trailing spaces
+  ---
+  duration_ms: 6.924875
+  type: 'test'
+  ...
+# Subtest: malformed config root receives a classified configuration error
+ok 5 - malformed config root receives a classified configuration error
+  ---
+  duration_ms: 4.545917
+  type: 'test'
+  ...
+# Subtest: missing input fails as input validation rather than unrelated missing configuration
+ok 6 - missing input fails as input validation rather than unrelated missing configuration
+  ---
+  duration_ms: 36.963583
+  type: 'test'
+  ...
+# Subtest: provider-inapplicable init options fail before initializing SQLite
+ok 7 - provider-inapplicable init options fail before initializing SQLite
+  ---
+  duration_ms: 41.364709
+  type: 'test'
+  ...
+# (node:78656) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: sqlite: shared provider contract
+    # Subtest: schema checks and initialize are repeatable
+    ok 1 - schema checks and initialize are repeatable
+      ---
+      duration_ms: 0.484459
+      type: 'test'
+      ...
+    # Subtest: optional standards, topic normalization, idempotence, unknown fields
+    ok 2 - optional standards, topic normalization, idempotence, unknown fields
+      ---
+      duration_ms: 3.852125
+      type: 'test'
+      ...
+    # Subtest: invalid labels roll back entire task
+    ok 3 - invalid labels roll back entire task
+      ---
+      duration_ms: 0.3255
+      type: 'test'
+      ...
+    # Subtest: trial preserves answers, unknown time, independent repeat, hints
+    ok 4 - trial preserves answers, unknown time, independent repeat, hints
+      ---
+      duration_ms: 1.690917
+      type: 'test'
+      ...
+    # Subtest: evidence validation and grade failure preserves trial
+    ok 5 - evidence validation and grade failure preserves trial
+      ---
+      duration_ms: 2.040834
+      type: 'test'
+      ...
+    # Subtest: immutable versions, full revision, replay before tip checks
+    ok 6 - immutable versions, full revision, replay before tip checks
+      ---
+      duration_ms: 1.439625
+      type: 'test'
+      ...
+    # Subtest: correction chains, independent regrade, clock skew, no self feedback
+    ok 7 - correction chains, independent regrade, clock skew, no self feedback
+      ---
+      duration_ms: 3.845458
+      type: 'test'
+      ...
+    # Subtest: literal unicode search, no field boundary match, cursors bound to filters
+    ok 8 - literal unicode search, no field boundary match, cursors bound to filters
+      ---
+      duration_ms: 3.1955
+      type: 'test'
+      ...
+    # Subtest: two connections same request and competing revisions
+    ok 9 - two connections same request and competing revisions
+      ---
+      duration_ms: 42.579833
+      type: 'test'
+      ...
+    # Subtest: actual independent processes preserve idempotency, conflicts, and lost responses
+    ok 10 - actual independent processes preserve idempotency, conflicts, and lost responses
+      ---
+      duration_ms: 95.032167
+      type: 'test'
+      ...
+    # Subtest: close and reopen preserves records
+    ok 11 - close and reopen preserves records
+      ---
+      duration_ms: 1.783208
+      type: 'test'
+      ...
+    1..11
+ok 8 - sqlite: shared provider contract
+  ---
+  duration_ms: 166.126292
+  type: 'test'
+  ...
+# Subtest: postgres: shared provider contract
+    # Subtest: schema checks and initialize are repeatable
+    ok 1 - schema checks and initialize are repeatable
+      ---
+      duration_ms: 24.296875
+      type: 'test'
+      ...
+    # Subtest: optional standards, topic normalization, idempotence, unknown fields
+    ok 2 - optional standards, topic normalization, idempotence, unknown fields
+      ---
+      duration_ms: 38.090875
+      type: 'test'
+      ...
+    # Subtest: invalid labels roll back entire task
+    ok 3 - invalid labels roll back entire task
+      ---
+      duration_ms: 6.940125
+      type: 'test'
+      ...
+    # Subtest: trial preserves answers, unknown time, independent repeat, hints
+    ok 4 - trial preserves answers, unknown time, independent repeat, hints
+      ---
+      duration_ms: 19.045625
+      type: 'test'
+      ...
+    # Subtest: evidence validation and grade failure preserves trial
+    ok 5 - evidence validation and grade failure preserves trial
+      ---
+      duration_ms: 37.857333
+      type: 'test'
+      ...
+    # Subtest: immutable versions, full revision, replay before tip checks
+    ok 6 - immutable versions, full revision, replay before tip checks
+      ---
+      duration_ms: 28.840458
+      type: 'test'
+      ...
+    # Subtest: correction chains, independent regrade, clock skew, no self feedback
+    ok 7 - correction chains, independent regrade, clock skew, no self feedback
+      ---
+      duration_ms: 53.05075
+      type: 'test'
+      ...
+    # Subtest: literal unicode search, no field boundary match, cursors bound to filters
+    ok 8 - literal unicode search, no field boundary match, cursors bound to filters
+      ---
+      duration_ms: 30.16325
+      type: 'test'
+      ...
+    # Subtest: two connections same request and competing revisions
+    ok 9 - two connections same request and competing revisions
+      ---
+      duration_ms: 30.41925
+      type: 'test'
+      ...
+    # Subtest: actual independent processes preserve idempotency, conflicts, and lost responses
+    ok 10 - actual independent processes preserve idempotency, conflicts, and lost responses
+      ---
+      duration_ms: 166.524792
+      type: 'test'
+      ...
+    # Subtest: close and reopen preserves records
+    ok 11 - close and reopen preserves records
+      ---
+      duration_ms: 10.371916
+      type: 'test'
+      ...
+    1..11
+ok 9 - postgres: shared provider contract
+  ---
+  duration_ms: 495.7945
+  type: 'test'
+  ...
+# Subtest: SQLite: real transaction failure rolls back task and labels
+ok 10 - SQLite: real transaction failure rolls back task and labels
+  ---
+  duration_ms: 3.371167
+  type: 'test'
+  ...
+# Subtest: SQLite: unknown schema and missing database are not silently initialized
+ok 11 - SQLite: unknown schema and missing database are not silently initialized
+  ---
+  duration_ms: 1.951583
+  type: 'test'
+  ...
+# Subtest: validation rejects impossible timestamps and oversized prompt
+ok 12 - validation rejects impossible timestamps and oversized prompt
+  ---
+  duration_ms: 2.760291
+  type: 'test'
+  ...
+# Subtest: SQLite: a transient writer lock retries the original request
+ok 13 - SQLite: a transient writer lock retries the original request
+  ---
+  duration_ms: 90.075208
+  type: 'test'
+  ...
+# Subtest: SQLite: initialize refuses a nonempty foreign database without ownership marker
+ok 14 - SQLite: initialize refuses a nonempty foreign database without ownership marker
+  ---
+  duration_ms: 1.94075
+  type: 'test'
+  ...
+# (node:78657) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CLI migration and deletion require explicit machine confirmation
+ok 15 - CLI migration and deletion require explicit machine confirmation
+  ---
+  duration_ms: 379.524292
+  type: 'test'
+  ...
+# (node:78658) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: PostgreSQL least-privilege deletion and migration
+ok 16 - PostgreSQL least-privilege deletion and migration
+  ---
+  duration_ms: 452.40625
+  type: 'test'
+  ...
+# Subtest: PostgreSQL rejects legacy cross-family data and raw INSERT after migration
+ok 17 - PostgreSQL rejects legacy cross-family data and raw INSERT after migration
+  ---
+  duration_ms: 313.714167
+  type: 'test'
+  ...
+# Subtest: PostgreSQL security contract rejects function, ACL and trigger tampering
+ok 18 - PostgreSQL security contract rejects function, ACL and trigger tampering
+  ---
+  duration_ms: 221.98075
+  type: 'test'
+  ...
+# Subtest: PostgreSQL stale plans, external links and transactional failure preserve all records
+ok 19 - PostgreSQL stale plans, external links and transactional failure preserve all records
+  ---
+  duration_ms: 316.656542
+  type: 'test'
+  ...
+# Subtest: PostgreSQL concurrent insertion cannot silently enlarge an approved delete
+ok 20 - PostgreSQL concurrent insertion cannot silently enlarge an approved delete
+  ---
+  duration_ms: 314.433834
+  type: 'test'
+  ...
+# Subtest: fresh PostgreSQL init creates v2 without storing or broadening admin identity
+ok 21 - fresh PostgreSQL init creates v2 without storing or broadening admin identity
+  ---
+  duration_ms: 148.057875
+  type: 'test'
+  ...
+# Subtest: PostgreSQL rejects column-level identity writes
+ok 22 - PostgreSQL rejects column-level identity writes
+  ---
+  duration_ms: 176.537958
+  type: 'test'
+  ...
+# Subtest: PostgreSQL deletes correction chains and rejects different database identity
+ok 23 - PostgreSQL deletes correction chains and rejects different database identity
+  ---
+  duration_ms: 231.446458
+  type: 'test'
+  ...
+# Subtest: PostgreSQL lock timeout and unsupported isolation roll back without deletion
+ok 24 - PostgreSQL lock timeout and unsupported isolation roll back without deletion
+  ---
+  duration_ms: 5207.199084
+  type: 'test'
+  ...
+# Subtest: PostgreSQL lost COMMIT acknowledgement reports unknown even when deletion committed
+ok 25 - PostgreSQL lost COMMIT acknowledgement reports unknown even when deletion committed
+  ---
+  duration_ms: 194.458083
+  type: 'test'
+  ...
+# Subtest: PostgreSQL SIGINT while waiting for locks rolls back before commit
+ok 26 - PostgreSQL SIGINT while waiting for locks rolls back before commit
+  ---
+  duration_ms: 271.511375
+  type: 'test'
+  ...
+# Subtest: deployment snapshot captures v1 and v2 identity with real psql
+ok 27 - deployment snapshot captures v1 and v2 identity with real psql
+  ---
+  duration_ms: 262.0145
+  type: 'test'
+  ...
+# Subtest: PostgreSQL canonical plan has a fixed vector independent of session timezone
+ok 28 - PostgreSQL canonical plan has a fixed vector independent of session timezone
+  ---
+  duration_ms: 117.99425
+  type: 'test'
+  ...
+# Subtest: PostgreSQL audits dangling topic edges even after privileged FK bypass
+ok 29 - PostgreSQL audits dangling topic edges even after privileged FK bypass
+  ---
+  duration_ms: 90.317625
+  type: 'test'
+  ...
+# (node:78659) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: feedback may cross task versions but never families
+ok 30 - feedback may cross task versions but never families
+  ---
+  duration_ms: 12.842541
+  type: 'test'
+  ...
+# Subtest: SQLite explicit migration, complete family deletion and retained topic
+ok 31 - SQLite explicit migration, complete family deletion and retained topic
+  ---
+  duration_ms: 20.521708
+  type: 'test'
+  ...
+# Subtest: SQLite stale full-content plan, blockers, and rollback
+ok 32 - SQLite stale full-content plan, blockers, and rollback
+  ---
+  duration_ms: 12.639625
+  type: 'test'
+  ...
+# Subtest: SQLite migration refuses legacy cross-family feedback without changing records
+ok 33 - SQLite migration refuses legacy cross-family feedback without changing records
+  ---
+  duration_ms: 6.993
+  type: 'test'
+  ...
+# Subtest: SQLite rejects drifted capability and legacy dangling foreign keys
+ok 34 - SQLite rejects drifted capability and legacy dangling foreign keys
+  ---
+  duration_ms: 6.429959
+  type: 'test'
+  ...
+# Subtest: SQLite v2 verifies trigger body and identity on repeat migration and preview
+ok 35 - SQLite v2 verifies trigger body and identity on repeat migration and preview
+  ---
+  duration_ms: 8.038083
+  type: 'test'
+  ...
+# Subtest: SQLite deletes feedback and correction cycles while preserving other records; token binds file
+ok 36 - SQLite deletes feedback and correction cycles while preserving other records; token binds file
+  ---
+  duration_ms: 14.385583
+  type: 'test'
+  ...
+# Subtest: SQLite canonical plan has a fixed Unicode, JSON, null and timestamp vector
+ok 37 - SQLite canonical plan has a fixed Unicode, JSON, null and timestamp vector
+  ---
+  duration_ms: 6.907958
+  type: 'test'
+  ...
+# Subtest: plan restricts Docker to loopback and owned resources
+ok 38 - plan restricts Docker to loopback and owned resources
+  ---
+  duration_ms: 0.565458
+  type: 'test'
+  ...
+# Subtest: unknown or mismatched resources cannot be adopted
+ok 39 - unknown or mismatched resources cannot be adopted
+  ---
+  duration_ms: 0.125084
+  type: 'test'
+  ...
+# Subtest: secrets are SQL escaped and application role receives no DDL
+ok 40 - secrets are SQL escaped and application role receives no DDL
+  ---
+  duration_ms: 0.127709
+  type: 'test'
+  ...
+# Subtest: secret values are never part of public deployment plan
+ok 41 - secret values are never part of public deployment plan
+  ---
+  duration_ms: 0.049167
+  type: 'test'
+  ...
+# Subtest: runtime drift cannot hide behind copied ownership labels
+ok 42 - runtime drift cannot hide behind copied ownership labels
+  ---
+  duration_ms: 0.242791
+  type: 'test'
+  ...
+# Subtest: privilege audit detects inherited or mutated write grants
+ok 43 - privilege audit detects inherited or mutated write grants
+  ---
+  duration_ms: 0.0655
+  type: 'test'
+  ...
+# Subtest: manifest comparison detects content changes even when row counts match
+ok 44 - manifest comparison detects content changes even when row counts match
+  ---
+  duration_ms: 0.334042
+  type: 'test'
+  ...
+# Subtest: v2 backup manifests include database identity and compare it
+ok 45 - v2 backup manifests include database identity and compare it
+  ---
+  duration_ms: 1.05125
+  type: 'test'
+  ...
+# Subtest: installation guidance distinguishes usable PATH, missing entry and shadowing without changing profiles
+ok 46 - installation guidance distinguishes usable PATH, missing entry and shadowing without changing profiles
+  ---
+  duration_ms: 2.497417
+  type: 'test'
+  ...
+# Subtest: isolated install, upgrade, uninstall and reinstall preserve learning data and default environment
+ok 47 - isolated install, upgrade, uninstall and reinstall preserve learning data and default environment
+  ---
+  duration_ms: 3170.045167
+  type: 'test'
+  ...
+# Subtest: installer refuses an unrelated existing launcher
+ok 48 - installer refuses an unrelated existing launcher
+  ---
+  duration_ms: 39.885833
+  type: 'test'
+  ...
+# Subtest: real PostgreSQL CLI init, privileges and process-restart learning flow
+ok 49 - real PostgreSQL CLI init, privileges and process-restart learning flow
+  ---
+  duration_ms: 819.072666
+  type: 'test'
+  ...
+# Subtest: PostgreSQL initialization state and transactional setup
+    # Subtest: empty database requires explicit admin; concurrent initialization is complete and repeatable
+    ok 1 - empty database requires explicit admin; concurrent initialization is complete and repeatable
+      ---
+      duration_ms: 446.632
+      type: 'test'
+      ...
+    # Subtest: advanced non-interactive file interface initializes explicitly and preserves JSON protocol
+    ok 2 - advanced non-interactive file interface initializes explicitly and preserves JSON protocol
+      ---
+      duration_ms: 334.233791
+      type: 'test'
+      ...
+    # Subtest: existing core-generated schema matches contract without migrations
+    ok 3 - existing core-generated schema matches contract without migrations
+      ---
+      duration_ms: 77.025666
+      type: 'test'
+      ...
+    # Subtest: partial tables, unknown objects and structural drift never auto-repair
+    ok 4 - partial tables, unknown objects and structural drift never auto-repair
+      ---
+      duration_ms: 353.260833
+      type: 'test'
+      ...
+    # Subtest: invisible structure is permission failure, not an empty database
+    ok 5 - invisible structure is permission failure, not an empty database
+      ---
+      duration_ms: 87.522917
+      type: 'test'
+      ...
+    # Subtest: old configuration conflict precedes all remote writes, including credential updates
+    ok 6 - old configuration conflict precedes all remote writes, including credential updates
+      ---
+      duration_ms: 75.016125
+      type: 'test'
+      ...
+    # Subtest: initialization failure and cancellation roll back schema and grants
+    ok 7 - initialization failure and cancellation roll back schema and grants
+      ---
+      duration_ms: 74.162292
+      type: 'test'
+      ...
+    # Subtest: missing database, target mismatch and unsafe role have distinct errors
+    ok 8 - missing database, target mismatch and unsafe role have distinct errors
+      ---
+      duration_ms: 33.131625
+      type: 'test'
+      ...
+    # Subtest: role identifiers are safely quoted and admin password never persisted
+    ok 9 - role identifiers are safely quoted and admin password never persisted
+      ---
+      duration_ms: 132.536708
+      type: 'test'
+      ...
+    # Subtest: post-commit application verification failure is explicit and preserves old configuration
+    ok 10 - post-commit application verification failure is explicit and preserves old configuration
+      ---
+      duration_ms: 197.834916
+      type: 'test'
+      ...
+    # Subtest: post-commit local save failure cleans generated secret and supports recovery
+    ok 11 - post-commit local save failure cleans generated secret and supports recovery
+      ---
+      duration_ms: 195.864083
+      type: 'test'
+      ...
+    1..11
+ok 50 - PostgreSQL initialization state and transactional setup
+  ---
+  duration_ms: 2008.93075
+  type: 'test'
+  ...
+# Subtest: doctor diagnoses missing configuration without secrets, then healthy SQLite
+ok 51 - doctor diagnoses missing configuration without secrets, then healthy SQLite
+  ---
+  duration_ms: 179.531917
+  type: 'test'
+  ...
+# Subtest: guided password failure preserves previous config and removes temporary credential
+ok 52 - guided password failure preserves previous config and removes temporary credential
+  ---
+  duration_ms: 18.921792
+  type: 'test'
+  ...
+# Subtest: doctor classifies unreachable PostgreSQL separately from authentication
+ok 53 - doctor classifies unreachable PostgreSQL separately from authentication
+  ---
+  duration_ms: 50.000167
+  type: 'test'
+  ...
+# Subtest: doctor identifies bad authentication against live PostgreSQL
+ok 54 - doctor identifies bad authentication against live PostgreSQL
+  ---
+  duration_ms: 53.746875
+  type: 'test'
+  ...
+# Subtest: installs user skill with absolute CLI and repeats without duplicates
+ok 55 - installs user skill with absolute CLI and repeats without duplicates
+  ---
+  duration_ms: 18.752
+  type: 'test'
+  ...
+# Subtest: preserves user modifications and unknown directories
+ok 56 - preserves user modifications and unknown directories
+  ---
+  duration_ms: 11.3275
+  type: 'test'
+  ...
+# Subtest: rejects invalid adapter, scope, relative executable and symlink destination
+ok 57 - rejects invalid adapter, scope, relative executable and symlink destination
+  ---
+  duration_ms: 6.043958
+  type: 'test'
+  ...
+# Subtest: updates owned pristine files when executable changes, preserves unknown files
+ok 58 - updates owned pristine files when executable changes, preserves unknown files
+  ---
+  duration_ms: 11.795709
+  type: 'test'
+  ...
+# Subtest: unknown same-name directory and symlinked parents are preserved
+ok 59 - unknown same-name directory and symlinked parents are preserved
+  ---
+  duration_ms: 5.098708
+  type: 'test'
+  ...
+# Subtest: shared install needs no adapter; pi uses the same directory
+ok 60 - shared install needs no adapter; pi uses the same directory
+  ---
+  duration_ms: 9.532375
+  type: 'test'
+  ...
+# Subtest: force reinstall backs up modified skill; uninstall preserves unrelated files
+ok 61 - force reinstall backs up modified skill; uninstall preserves unrelated files
+  ---
+  duration_ms: 27.47425
+  type: 'test'
+  ...
+# Subtest: uninstall is idempotent and protects modified skill
+ok 62 - uninstall is idempotent and protects modified skill
+  ---
+  duration_ms: 20.550125
+  type: 'test'
+  ...
+# Subtest: CLI shared skill lifecycle needs no database config
+ok 63 - CLI shared skill lifecycle needs no database config
+  ---
+  duration_ms: 166.344625
+  type: 'test'
+  ...
+# Subtest: real PTY arrow menu chooses SQLite and persists initialized target
+ok 64 - real PTY arrow menu chooses SQLite and persists initialized target
+  ---
+  duration_ms: 97.612792
+  type: 'test'
+  ...
+# Subtest: real PTY PostgreSQL missing connection file preserves old configuration
+ok 65 - real PTY PostgreSQL missing connection file preserves old configuration
+  ---
+  duration_ms: 110.108625
+  type: 'test'
+  ...
+# Subtest: real PTY PostgreSQL unsafe secret permissions preserve old configuration
+ok 66 - real PTY PostgreSQL unsafe secret permissions preserve old configuration
+  ---
+  duration_ms: 109.572625
+  type: 'test'
+  ...
+# Subtest: real PTY switching SQLite target requires displayed target and explicit confirmation
+ok 67 - real PTY switching SQLite target requires displayed target and explicit confirmation
+  ---
+  duration_ms: 199.564209
+  type: 'test'
+  ...
+# Subtest: real PTY PostgreSQL menu initializes against live PG and saves only runtime identity
+ok 68 - real PTY PostgreSQL menu initializes against live PG and saves only runtime identity
+  ---
+  duration_ms: 183.601292
+  type: 'test'
+  ...
+# Subtest: guided PostgreSQL hides password and saves managed credentials
+ok 69 - guided PostgreSQL hides password and saves managed credentials
+  ---
+  duration_ms: 200.966667
+  type: 'test'
+  ...
+# Subtest: guided PostgreSQL cancellation never persists or echoes password
+ok 70 - guided PostgreSQL cancellation never persists or echoes password
+  ---
+  duration_ms: 73.727333
+  type: 'test'
+  ...
+# Subtest: Clack renders vertical radio choices and cancels without saving
+ok 71 - Clack renders vertical radio choices and cancels without saving
+  ---
+  duration_ms: 63.120833
+  type: 'test'
+  ...
+# Subtest: Clack validates PostgreSQL port before continuing
+ok 72 - Clack validates PostgreSQL port before continuing
+  ---
+  duration_ms: 68.384042
+  type: 'test'
+  ...
+# Subtest: guided empty PostgreSQL needs consent, transient admin, and preserves config on refusal
+ok 73 - guided empty PostgreSQL needs consent, transient admin, and preserves config on refusal
+  ---
+  duration_ms: 636.825291
+  type: 'test'
+  ...
+# (node:78678) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: deletion PTY shows family scope, defaults to cancel, Ctrl-C preserves data, accepts explicit choice
+ok 74 - deletion PTY shows family scope, defaults to cancel, Ctrl-C preserves data, accepts explicit choice
+  ---
+  duration_ms: 222.320916
+  type: 'test'
+  ...
+1..74
+# tests 107
+# suites 0
+# pass 107
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8386.325125

@@ -17,7 +17,7 @@ import os,sys,json,pty,select,time,re,signal,fcntl,termios,struct
 spec=json.loads(sys.argv[1]); pid,fd=pty.fork()
 if pid==0:
  fcntl.ioctl(0,termios.TIOCSWINSZ,struct.pack('HHHH',40,120,0,0))
- os.execv(spec['node'],[spec['node'],spec['cli'],'init','--config',spec['config']]+spec.get('args',[]))
+ os.execv(spec['node'],[spec['node'],spec['cli']]+spec.get('command',['init'])+['--config',spec['config']]+spec.get('args',[]))
 output=''; cursor=0; error=None; status=None
 def receive(deadline):
  global output,status
@@ -56,13 +56,13 @@ function fixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return { dir, config: join(dir, "config.json") };
 }
-function tty(config, steps, args = []) {
+function tty(config, steps, args = [], command = ['init']) {
   const r = spawnSync(
     "python3",
     [
       "-c",
       python,
-      JSON.stringify({ node: process.execPath, cli, config, steps, args }),
+      JSON.stringify({ node: process.execPath, cli, config, steps, args, command }),
     ],
     { encoding: "utf8", timeout: 25000 },
   );
@@ -239,11 +239,11 @@ test('Clack validates PostgreSQL port before continuing', t => {
 
 test('guided empty PostgreSQL needs consent, transient admin, and preserves config on refusal',{skip:!process.env.EVALME_SETUP_PG_PORT},async t=>{
  const {default:pg}=await import('pg');const {randomUUID}=await import('node:crypto');
- const {dir,config}=fixture(t);const id=randomUUID().replaceAll('-','');const database='tty_'+id,user='ttyapp_'+id;
+ const {dir,config}=fixture(t);const id=randomUUID().replaceAll('-','');const database='tty_'+id,user='ttyapp_'+id,owner='ttyowner_'+id;
  const port=Number(process.env.EVALME_SETUP_PG_PORT);
  const root=new pg.Client({host:'127.0.0.1',port,user:'postgres',database:'postgres'});await root.connect();
- await root.query(`CREATE ROLE "${user}" LOGIN`);await root.query(`CREATE DATABASE "${database}"`);
- t.after(async()=>{await root.query(`DROP DATABASE "${database}" WITH (FORCE)`);await root.query(`DROP ROLE "${user}"`);await root.end();});
+ await root.query(`CREATE ROLE "${owner}" LOGIN`);await root.query(`CREATE ROLE "${user}" LOGIN`);await root.query(`CREATE DATABASE "${database}"`);
+ t.after(async()=>{await root.query(`DROP DATABASE "${database}" WITH (FORCE)`);await root.query(`DROP ROLE "${user}"`);await root.query(`DROP ROLE "${owner}"`);await root.end();});
  initOld(config,join(dir,'old.sqlite'));const before=readFileSync(config,'utf8');
  const steps=[...selectPG,{expect:'PostgreSQL 地址',send:'127.0.0.1\r'},{expect:'端口',send:String(port)+'\r'},
  {expect:'数据库名称',send:database+'\r'},{expect:'应用用户名',send:user+'\r'},
@@ -254,7 +254,7 @@ test('guided empty PostgreSQL needs consent, transient admin, and preserves conf
  const refused=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'},{expect:'暂不初始化',send:'\r'}]);
  assert.equal(refused.error,null,refused.output);assert.equal(refused.status,130);assert.equal(readFileSync(config,'utf8'),before);
  const check=new pg.Client({host:'127.0.0.1',port,user:'postgres',database});await check.connect();
- assert.equal((await check.query("SELECT 1 FROM pg_namespace WHERE nspname='evalme'")).rowCount,0);await check.end();
+ assert.equal((await check.query("SELECT 1 FROM pg_namespace WHERE nspname='evalme'")).rowCount,0);await check.query(`CREATE SCHEMA evalme AUTHORIZATION "${owner}"`);await check.end();
  const accepted=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'},
  {expect:'暂不初始化',send:'y\r'}, {expect:'临时管理用户名',send:'postgres\r'},
  {expect:'临时管理密码',send:'ADMIN_SYNTHETIC\r'}]);
@@ -266,4 +266,19 @@ test('guided empty PostgreSQL needs consent, transient admin, and preserves conf
  assert.equal(ready.error,null,ready.output);assert.equal(ready.status,0,ready.output);
  assert.ok(!ready.output.includes('将连接配置替换为'));
  assert.ok(!ready.output.includes('临时管理'));assert.ok(!ready.output.includes('JSON 路径'));
+});
+
+test('deletion PTY shows family scope, defaults to cancel, Ctrl-C preserves data, accepts explicit choice',async t=>{
+ const {dir,config}=fixture(t);const runtime={provider:'sqlite',path:join(dir,'delete.sqlite')};
+ const {openStore}=await import('../src/core.mjs');const {records}=await import('./helpers/deletion-records.mjs');const {migrateDatabase}=await import('../src/database.mjs');
+ const s=await openStore(runtime,{initialize:true});const r=await records(s);await s.close();await migrateDatabase(runtime);
+ writeFileSync(config,JSON.stringify(runtime),{mode:0o600});
+ for(const send of ['\r','\x03']) {
+  const p=tty(config,[{expect:'是否删除题目及全部关联记录',send}],[],['task','delete',r.a2]);
+  assert.equal(p.error,null,p.output);assert.equal(p.status,130,p.output);assert.match(p.output,/题目版本：2 个/);assert.match(p.output,/练习记录：2 条/);
+  const check=await openStore(runtime);assert.equal((await check.query('SELECT * FROM tasks')).length,3);await check.close();
+ }
+ const p=tty(config,[{expect:'是否删除题目及全部关联记录',send:'y\r'}],[],['task','delete',r.a2]);
+ assert.equal(p.error,null,p.output);assert.equal(p.status,0,p.output);
+ const check=await openStore(runtime);assert.equal((await check.query('SELECT * FROM tasks')).length,1);await check.close();
 });

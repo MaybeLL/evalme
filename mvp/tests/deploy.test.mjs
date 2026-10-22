@@ -93,3 +93,11 @@ test('manifest comparison detects content changes even when row counts match',as
  const count=structuredClone(a);count.tasks.count=2;assert.throws(()=>compareSnapshots(a,count),/tasks/);
  const missing=structuredClone(a);delete missing.grades;assert.throws(()=>compareSnapshots(a,missing),/tables/);
 });
+
+test('v2 backup manifests include database identity and compare it',async()=>{
+ const {compareSnapshots}=await import('../scripts/deploy/postgres-mac.mjs');
+ const a=Object.fromEntries(['topics','tasks','task_topics','trials','grades','schema_meta','database_identity'].map(k=>[k,{count:1,sha256:'a'.repeat(64)}]));
+ assert.equal(compareSnapshots(a,structuredClone(a)),true);
+ const b=structuredClone(a);b.database_identity.sha256='b'.repeat(64);assert.throws(()=>compareSnapshots(a,b),/database_identity/);
+ assert.match(roleSQL('root','admin','app'),/REVOKE INSERT ON evalme.database_identity/);
+});
