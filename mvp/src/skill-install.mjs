@@ -5,11 +5,13 @@ import {
   lstat,
   rename,
   rm,
+  cp,
+  rmdir,
 } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, isAbsolute } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-const version = "0.1.0";
+import { VERSION as version } from "./runtime.mjs";
 const files = ["SKILL.md", "references/inputs.md"];
 const hash = (x) => createHash("sha256").update(x).digest("hex");
 const fail = (code, message) => Object.assign(new Error(message), { code });
@@ -22,13 +24,15 @@ async function stat(path) {
   }
 }
 export async function installSkill({
-  agent,
-  scope,
+  agent = "shared",
+  scope = "user",
+  force = false,
+  uninstall = false,
   home = homedir(),
   cliPath,
 }) {
   if (
-    agent !== "codex" ||
+    !["shared", "codex", "pi"].includes(agent) ||
     scope !== "user" ||
     !isAbsolute(home) ||
     typeof cliPath !== "string" ||
@@ -37,7 +41,7 @@ export async function installSkill({
   )
     throw fail(
       "VALIDATION_ERROR",
-      "Expected codex/user and absolute home/CLI paths",
+      "Expected shared/codex/pi, user scope and absolute home/CLI paths",
     );
   const parent = join(home, ".agents", "skills");
   for (const p of [join(home, ".agents"), parent]) {
@@ -68,7 +72,8 @@ export async function installSkill({
         )
       ).replaceAll("{{CLI_PATH_JSON}}", JSON.stringify(cliPath));
     const existing = await stat(path);
-    let previous;
+    let previous, backup;
+    if (!existing && uninstall) return {path, removed: false, replayed: true};
     if (existing) {
       if (!existing.isDirectory() || existing.isSymbolicLink())
         throw fail("CONFLICT", "Skill destination is not an owned directory");
@@ -86,23 +91,36 @@ export async function installSkill({
       }
       if (previous.owner !== "evalme-mvp" || !previous.hashes)
         throw fail("CONFLICT", "Unknown skill owner");
+      const refs = await stat(join(path, "references"));
+      if (!refs?.isDirectory() || refs.isSymbolicLink())
+        throw fail("CONFLICT", "References must be an owned directory");
       for (const file of files) {
         const s = await stat(join(path, file));
         if (
           !s ||
           !s.isFile() ||
           s.isSymbolicLink() ||
-          hash(await readFile(join(path, file))) !== previous.hashes[file]
+          (!force && hash(await readFile(join(path, file))) !== previous.hashes[file])
         )
           throw fail(
             "CONFLICT",
             "Skill was modified; preserve changes before reinstalling",
           );
       }
-      const refs = await stat(join(path, "references"));
-      if (!refs?.isDirectory() || refs.isSymbolicLink())
-        throw fail("CONFLICT", "References must be an owned directory");
-      if (files.every((f) => hash(contents[f]) === previous.hashes[f]))
+      if (force) {
+        const backups = join(home, ".local", "share", "evalme-mvp", "skill-backups");
+        await mkdir(backups, {recursive: true, mode: 0o700});
+        backup = join(backups, randomUUID());
+        await cp(path, backup, {recursive: true, dereference: false});
+      }
+      if (uninstall) {
+        for (const file of [...files, ".evalme-install.json"]) await rm(join(path, file));
+        for (const dir of [join(path, "references"), path]) {
+          try {await rmdir(dir);} catch (e) {if (e.code !== "ENOTEMPTY") throw e;}
+        }
+        return {path, removed: true, replayed: false, ...(backup ? {backup} : {})};
+      }
+      if (!force && previous.cliPath === cliPath && previous.version === version && files.every((f) => hash(contents[f]) === previous.hashes[f]))
         return { path, version, replayed: true };
     }
     await mkdir(join(path, "references"), { recursive: true, mode: 0o700 });
@@ -115,6 +133,7 @@ export async function installSkill({
     }
     const manifest = {
       owner: "evalme-mvp",
+      cliPath,
       version,
       hashes: Object.fromEntries(files.map((f) => [f, hash(contents[f])])),
     };
@@ -124,8 +143,12 @@ export async function installSkill({
       flag: "wx",
     });
     await rename(temp, join(path, ".evalme-install.json"));
-    return { path, version, replayed: false };
+    return { path, version, replayed: false, ...(backup ? {backup} : {}) };
   } finally {
     await rm(lock, { recursive: true, force: true });
   }
+}
+
+export function uninstallSkill(options = {}) {
+  return installSkill({...options, cliPath: options.cliPath || process.execPath, uninstall: true});
 }

@@ -194,3 +194,34 @@ test('real PTY PostgreSQL menu initializes against live PG and saves only runtim
  const secret=readFileSync(expected.secret_file,'utf8').replace(/\r?\n$/,'');assert.ok(!r.output.includes(secret),'TTY must not print password');
  const query=spawnSync(process.execPath,[cli,'task','list','--config',config,'--json','--non-interactive'],{encoding:'utf8'});assert.equal(query.status,0,query.stdout+query.stderr);assert.equal(JSON.parse(query.stdout).ok,true);
 });
+
+test('guided PostgreSQL hides password and saves managed credentials',{skip:!process.env.EVALME_TEST_PG_CONFIG},t=>{
+ const {dir,config}=fixture(t);
+ const c=JSON.parse(readFileSync(process.env.EVALME_TEST_PG_CONFIG,'utf8'));
+ const password=readFileSync(c.secret_file,'utf8').replace(/\r?\n$/,'');
+ const steps=[...selectPG,
+ {expect:'Runtime connection JSON path',send:'\n'},
+ {expect:'PostgreSQL host:',send:c.host+'\n'},
+ {expect:'Port',send:String(c.port)+'\n'},
+ {expect:'Database',send:c.database+'\n'},
+ {expect:'Runtime user',send:c.user+'\n'},
+ {expect:'Password \\(hidden\\)',send:password+'\n'},
+ {expect:'TLS:',send:'none\n'},
+ {expect:'admin connection JSON path',send:'\n'}];
+ const r=tty(config,steps);
+ assert.ok(!r.output.includes(password),'Password must not appear in terminal output');
+ assert.equal(r.error,null);assert.equal(r.status,0);
+ const saved=JSON.parse(readFileSync(config));assert.equal(saved.user,c.user);
+ assert.ok(saved.secret_file.startsWith(dir+'/credential-'));
+ assert.equal(readFileSync(saved.secret_file,'utf8'),password);
+ const check=spawnSync(process.execPath,[cli,'task','list','--config',config,'--json'],{encoding:'utf8'});
+ assert.equal(check.status,0);
+});
+test('guided PostgreSQL cancellation never persists or echoes password',t=>{
+ const {dir,config}=fixture(t);const password='synthetic-private-password';
+ const r=tty(config,[...selectPG,{expect:'Runtime connection JSON path',send:'\n'},
+ {expect:'PostgreSQL host:',send:'127.0.0.1\n'},{expect:'Port',send:'1\n'},
+ {expect:'Database',send:'\n'},{expect:'Runtime user',send:'\n'},
+ {expect:'Password \\(hidden\\)',send:password+'\n'},{expect:'TLS:',send:'invalid\n'}]);
+ assert.ok(!r.output.includes(password));assert.equal(r.error,null);assert.notEqual(r.status,0);assert.equal(existsSync(config),false);
+});

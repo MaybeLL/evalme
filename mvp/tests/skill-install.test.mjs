@@ -89,3 +89,49 @@ test("unknown same-name directory and symlinked parents are preserved", async (t
   await symlink(args.home, join(other.home, ".agents"));
   await assert.rejects(installSkill(other), { code: "CONFLICT" });
 });
+
+test('shared install needs no adapter; pi uses the same directory', async (t) => {
+  const args = await setup(t);
+  assert.equal((await installSkill({...args, agent: undefined})).replayed, false);
+  assert.equal((await installSkill({...args, agent: 'pi'})).replayed, true);
+});
+test('force reinstall backs up modified skill; uninstall preserves unrelated files', async (t) => {
+  const args = await setup(t);
+  const first = await installSkill(args);
+  await writeFile(join(first.path, 'SKILL.md'), 'custom');
+  const updated = await installSkill({...args, force: true});
+  assert.equal(await readFile(join(updated.backup, 'SKILL.md'), 'utf8'), 'custom');
+  await writeFile(join(first.path, 'personal.txt'), 'keep');
+  const {uninstallSkill} = await import('../src/skill-install.mjs');
+  assert.equal((await uninstallSkill(args)).removed, true);
+  assert.equal(await readFile(join(first.path, 'personal.txt'), 'utf8'), 'keep');
+});
+
+test('uninstall is idempotent and protects modified skill', async (t) => {
+  const args = await setup(t);
+  const {uninstallSkill} = await import('../src/skill-install.mjs');
+  assert.equal((await uninstallSkill(args)).replayed, true);
+  const first = await installSkill(args);
+  await writeFile(join(first.path, 'SKILL.md'), 'custom');
+  await assert.rejects(uninstallSkill(args), {code: 'CONFLICT'});
+  const result = await uninstallSkill({...args, force: true});
+  assert.equal(await readFile(join(result.backup, 'SKILL.md'), 'utf8'), 'custom');
+  assert.equal((await uninstallSkill(args)).replayed, true);
+});
+test('CLI shared skill lifecycle needs no database config', async (t) => {
+  const {spawnSync} = await import('node:child_process');
+  const {fileURLToPath} = await import('node:url');
+  const args = await setup(t);
+  const cli = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
+  const run = (...flags) => {
+    const r = spawnSync(process.execPath, [cli, ...flags, '--json'], {env: {...process.env, HOME: args.home}, encoding:'utf8'});
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    return JSON.parse(r.stdout).data;
+  };
+  const installed = run('skill', 'install', '--cli-path', args.cliPath);
+  assert.ok((await readFile(join(installed.path, 'SKILL.md'), 'utf8')).includes(args.cliPath));
+  await writeFile(join(installed.path, 'SKILL.md'), 'custom');
+  assert.ok(run('skill', 'install', '--force').backup);
+  assert.equal(run('skill', 'uninstall').removed, true);
+  assert.equal(run('skill', 'uninstall').replayed, true);
+});

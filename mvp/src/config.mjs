@@ -147,7 +147,7 @@ function save(path, value) {
     if (existsSync(temp)) unlinkSync(temp);
   }
 }
-export async function assertRuntimePrivileges(c) {
+export async function assertRuntimePrivileges(c, {requireTables = false} = {}) {
   const { default: pg } = await import("pg");
   const client = new pg.Client({ ...c, connectionTimeoutMillis: 5000 });
   try {
@@ -160,11 +160,21 @@ export async function assertRuntimePrivileges(c) {
         "UNSAFE_RUNTIME_ROLE",
         "Use a dedicated SELECT/INSERT runtime role without administrative memberships.",
       );
+    if (requireTables) {
+      for (const table of ['tasks','trials','grades','topics','task_topics','schema_meta']) {
+        const {rows} = await client.query("SELECT has_table_privilege(current_user, $1, 'SELECT') AS r, has_table_privilege(current_user, $1, 'INSERT') AS w", [`evalme.${table}`]);
+        if (!rows[0]?.r || (table !== 'schema_meta' && !rows[0]?.w))
+          throw new AppError('DB_PERMISSION_DENIED', 'Application account needs SELECT/INSERT grants.');
+      }
+    }
   } catch (e) {
     if (e instanceof AppError) throw e;
-    const unavailable = ["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT"].includes(
+    if (e.code === '42501') throw new AppError('DB_PERMISSION_DENIED', 'PostgreSQL permission denied.');
+    if (['DEPTH_ZERO_SELF_SIGNED_CERT','SELF_SIGNED_CERT_IN_CHAIN','CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','ERR_TLS_CERT_ALTNAME_INVALID'].includes(e.code))
+      throw new AppError('DB_TLS_FAILED', 'TLS verification failed; check hostname and CA certificate.');
+    const unavailable = ["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNRESET", "EAI_AGAIN"].includes(
       e.code,
-    );
+    ) || /timeout|connection terminated/i.test(e.message || '');
     throw new AppError(
       unavailable ? "DB_CONNECTION_FAILED" : "CONFIG_AUTH_FAILED",
       unavailable
@@ -177,6 +187,20 @@ export async function assertRuntimePrivileges(c) {
   }
 }
 export async function initialize(flags) {
+  if (flags._password === undefined) return initializeSaved(flags);
+  if (typeof flags._password !== 'string' || !flags._password || /[\r\n\x00]/.test(flags._password))
+    throw invalid('Password must be a nonempty single line.');
+  const parent = dirname(absolute(configPath(flags)));
+  mkdirSync(parent, {recursive:true, mode:0o700});
+  const st=lstatSync(parent);
+  if (!st.isDirectory() || st.isSymbolicLink()) throw invalid('Configuration directory must be a real directory.');
+  const secret_file=join(parent, `credential-${randomUUID()}.secret`);
+  writeFileSync(secret_file, flags._password, {mode:0o600,flag:'wx'});
+  try {
+    return await initializeSaved({...flags,_connectionValues:{...flags._connectionValues,secret_file}});
+  } catch(e) {unlinkSync(secret_file);throw e;}
+}
+async function initializeSaved(flags) {
   const path = absolute(configPath(flags));
   let saved, runtime;
   if (flags.provider === "sqlite") {
@@ -254,7 +278,7 @@ export async function initialize(flags) {
     } finally {
       await store.close();
     }
-    await assertRuntimePrivileges(runtime);
+    await assertRuntimePrivileges(runtime, {requireTables:true});
   }
   save(path, saved);
   return { provider: runtime.provider, config: path };

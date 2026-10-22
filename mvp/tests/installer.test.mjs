@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync,rmSync,readFileSync,writeFileSync,mkdirSync,existsSync,cpSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const source=fileURLToPath(new URL('..',import.meta.url));
+test('isolated install, upgrade, uninstall and reinstall preserve learning data and default environment',{timeout:120000},t=>{
+ const home=mkdtempSync(join(tmpdir(),'evalme-install-'));t.after(()=>rmSync(home,{recursive:true,force:true}));
+ // Reuse only package cache, not any actual user configuration.
+ const env={...process.env,HOME:home,EVALME_CONFIG:'',npm_config_cache:join(process.env.HOME,'.npm'),EVALME_NODE:process.execPath};
+ const install=()=>{const r=spawnSync('sh',[join(source,'scripts/install.sh'),'--source',source],{env,encoding:'utf8',timeout:45000});assert.equal(r.status,0,r.stdout+r.stderr);};
+ install();
+ const cmd=join(home,'.local/bin/evalme-mvp');
+ const run=(args,code=0)=>{const r=spawnSync(cmd,[...args,'--json'],{env,encoding:'utf8',timeout:45000});assert.equal(r.status,code,r.stdout+r.stderr);return JSON.parse(r.stdout).data;};
+ assert.equal(run(['--version']).version,'0.2.0');
+ assert.ok(readFileSync(cmd,'utf8').includes(process.execPath));
+ assert.ok(!existsSync(join(home,'.zshrc')));
+ run(['init','--provider','sqlite','--non-interactive']);
+ const cfg=join(home,'.config/evalme-mvp/config.json');const original=readFileSync(cfg,'utf8');const db=JSON.parse(original).path;
+ assert.equal(run(['doctor']).ready,true);
+ const updatedSource=join(home,'upgrade-source');mkdirSync(updatedSource);
+ for(const file of ['src','scripts','skills','package.json','npm-shrinkwrap.json'])cpSync(join(source,file),join(updatedSource,file),{recursive:true});
+ const template=join(updatedSource,'skills/evalme-mvp/SKILL.md');writeFileSync(template,readFileSync(template,'utf8')+'\nUpgrade template marker\n');
+ assert.equal(run(['upgrade','--source',updatedSource]).version,'0.2.0');
+ assert.ok(readFileSync(join(home,'.agents/skills/evalme-mvp/SKILL.md'),'utf8').includes('Upgrade template marker'));
+ assert.equal(readFileSync(cfg,'utf8'),original);
+ const wrapperBefore=readFileSync(cmd,'utf8');
+ const skill=join(home,'.agents/skills/evalme-mvp/SKILL.md');
+ const skillBefore=readFileSync(skill,'utf8');writeFileSync(skill,'user edits');
+ run(['upgrade','--source',source],4);
+ assert.equal(readFileSync(cmd,'utf8'),wrapperBefore);
+ assert.equal(readFileSync(cfg,'utf8'),original);
+ writeFileSync(skill,skillBefore);
+ assert.equal(run(['uninstall']).removed,false);
+ assert.equal(run(['uninstall','--yes']).removed,true);
+ assert.ok(!existsSync(cmd));assert.ok(existsSync(db));assert.ok(existsSync(cfg));
+ install();assert.equal(run(['doctor']).ready,true);
+ const generated=join(dirname(cfg),'credential-11111111-1111-4111-8111-111111111111.secret');writeFileSync(generated,'synthetic',{mode:0o600});
+ writeFileSync(cfg,JSON.stringify({provider:'postgres',secret_file:generated}),{mode:0o600});
+ assert.equal(run(['uninstall','--yes','--purge-config']).removed,true);
+ assert.ok(!existsSync(generated));
+ assert.ok(!existsSync(cfg));assert.ok(existsSync(db));
+});
+
+test('installer refuses an unrelated existing launcher',t=>{
+ const home=mkdtempSync(join(tmpdir(),'evalme-conflict-'));t.after(()=>rmSync(home,{recursive:true,force:true}));
+ mkdirSync(join(home,'.local/bin'),{recursive:true});const cmd=join(home,'.local/bin/evalme-mvp');writeFileSync(cmd,'unrelated');
+ const r=spawnSync('sh',[join(source,'scripts/install.sh'),'--source',source],{env:{...process.env,HOME:home,EVALME_NODE:process.execPath},encoding:'utf8'});
+ assert.notEqual(r.status,0);assert.equal(readFileSync(cmd,'utf8'),'unrelated');
+});

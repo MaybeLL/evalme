@@ -1,35 +1,49 @@
-# EvalMe MVP CLI
+# EvalMe CLI 0.2.0
 
-当前实现位于本目录；仓库内旧实现、旧文档与旧示例数据已按用户授权移除；Git 历史已重建为当前 MVP 的新起点。Node.js 24，SQLite 使用内置 `node:sqlite`，PostgreSQL 使用锁定的 `pg` 驱动。无 LLM API 调用；语义评价由兼容 Agent 完成。
+用户安装与两步开始见[主说明](../README.md)。运行时支持 Node 22.16+（22.x）和 24.x。内置 SQLite 在 Node 22 上可能打印实验性提示到 stderr，不影响 stdout JSON 协议。
 
-## 安装与开始
+## 开发与本地安装
 
 ```sh
-cd mvp
-npm ci
-npm pack
-# 在选定安装前缀中安装生成的本地 tgz；不需要发布到公共注册表。
-npm install --prefix /absolute/installation /absolute/evalme-mvp-cli-0.1.0.tgz
-/absolute/installation/node_modules/.bin/evalme-mvp --version --json
-/absolute/installation/node_modules/.bin/evalme-mvp skill install --agent codex --scope user --json
-/absolute/installation/node_modules/.bin/evalme-mvp init
+npm ci --ignore-scripts
+npm test
+sh scripts/install.sh --source "$PWD"
 ```
 
-TTY 初始化支持上下键选择 SQLite/PostgreSQL。SQLite 默认新路径 `~/.local/share/evalme-mvp/evalme.sqlite3`；配置默认 `~/.config/evalme-mvp/config.json`，不读取旧 `EVALME_HOME`。PG 可以逐项填写 host/port/database/user/私有密码文件/TLS，也可读取受保护连接 JSON。重新打开支持 Skills 的宿主会话以发现新安装的 `evalme-mvp`；宿主发现及语义抽查与自动安装测试分开报告。
+源码完整包含 CLI、Skill、两库 Provider、部署脚本和测试。`npm-shrinkwrap.json` 随包分发锁定依赖；修改依赖后须同步更新它与 `package-lock.json`。无需将包发布到 npm。
 
-如果已有配置，新目标需明确确认；非交互使用 `--replace-config`。这只切换连接，不移动或删除数据。
+安装目录：`~/.local/share/evalme-mvp/installation/`，启动入口：`~/.local/bin/evalme-mvp`。入口绑定兼容 Node 绝对路径，Skill 绑定入口。安装不修改 shell 配置。升级保留旧代次直到卸载；配置、数据库不位于受管理程序目录内。
+
+## 初始化与连接
+
+`evalme-mvp init` 提供终端菜单。SQLite 默认 `~/.local/share/evalme-mvp/evalme.sqlite3`；配置默认 `~/.config/evalme-mvp/config.json`。PostgreSQL 可以逐项输入，密码隐藏输入，CLI 自动创建私有凭据。连接/权限/schema 验证失败不替换旧配置，并删除本次临时凭据。重配成功保留先前凭据文件，避免破坏其他配置引用；这些历史凭据不在默认卸载清理范围内。
+
+已有配置切换需确认；非交互需 `--replace-config`，只切换连接，不迁移或删除数据。机器调用仍支持受保护 JSON：
 
 ```sh
 evalme-mvp init --provider sqlite --path /absolute/data.sqlite3 --config /absolute/config.json --non-interactive --json
-evalme-mvp init --provider postgres --connection-file /absolute/app.json --admin-connection-file /absolute/admin.json --config /absolute/config.json --non-interactive --json
+evalme-mvp init --provider postgres --connection-file /absolute/app.json --config /absolute/config.json --non-interactive --json
 ```
 
-PG 运行配置使用仅 SELECT/INSERT 身份。schema 尚未创建时临时提供 admin 连接，完成后仅保存应用身份；后续客户端无需管理员。连接文件和秘密文件须为0600普通文件。`ssl` 必须显式为 `"verify-full"` 或 `false`；false 仅用于已确认的 loopback/私有 tailnet 路径，不表示PG TLS已启用。部署说明见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+远程客户端使用 SELECT/INSERT 应用账号。仅服务端首次建 schema 时临时提供 `--admin-connection-file`；管理员身份不存入运行配置。`ssl` 显式为 `"verify-full"` 或 `false`。false 只用于已确认的 loopback/私有 tailnet，不代表 PG TLS。配置文件及秘密文件均须为 0600 普通文件。
 
-## 两条主要流程
+## Skill 与诊断
 
-1. 学习后触发 Skill：从当前可访问对话提炼题目，经 CLI 保存；可以只有 task，没有 trial/grade；参考答案、评分要点均可缺省。
-2. 有空时触发 Skill：查话题与任务、展示题面、真实作答后记录 trial、Agent 评价并提交 grade。复练新增记录；查看旧答案不新增练习。
+```sh
+evalme-mvp skill install
+evalme-mvp skill install --force
+evalme-mvp skill uninstall
+evalme-mvp doctor --json
+```
+
+默认安装到 `~/.agents/skills/evalme-mvp`。兼容参数 `--agent codex` / `--agent pi` 指向同一共享目录。`--cli-path /absolute/launcher` 可显式绑定入口。修改过的受管理文件默认拒绝覆盖；`--force` 先备份到 `~/.local/share/evalme-mvp/skill-backups/`。未知目录和符号链接不会被强行覆盖。Skill 卸载保留额外用户文件，不修改数据库。安装器只验证文件，Pi/Codex 的真实发现仍需新会话验证。
+
+`doctor` 输出 ready/checks；必需检查失败退出码 5，查询成功退出码 0。外层 ok 表示诊断命令成功执行，data.ready 表示使用环境是否就绪。检查数据库读取及声明权限，不写入合成练习。网络、认证、证书、权限和配置问题分别报告修复建议。
+
+## 学习流程与机器协议
+
+1. 从当前可访问学习对话提炼 task，可以没有参考答案/rubric，也可以尚无 trial/grade。
+2. 按话题找 task，仅展示题面。等待真实作答后保存 trial，Agent 评价并提交 grade。复练新增记录，不覆盖历史。
 
 ```sh
 evalme-mvp id new --json
@@ -41,19 +55,24 @@ evalme-mvp trial record --input /private/trial.json --expect-api-version 1 --jso
 evalme-mvp grade submit --input /private/grade.json --expect-api-version 1 --json
 ```
 
-请求必须携带由 `id new` 产生的 UUID v4。同ID同内容重试返回原记录；同ID不同内容报冲突。提交结果不明时保留原请求文件并重试，不生成新ID。完整输入例子见 [Skill 输入说明](skills/evalme-mvp/references/inputs.md)；命令概览见 `--help --json`。
+UUID v4 使用 `id new`。同 ID 同内容重试返回原记录，同 ID 不同内容冲突；提交不明时保留原请求，用原 ID 重试。完整输入见 [Skill 输入说明](skills/evalme-mvp/references/inputs.md)。所有列表支持 `--limit 1..100` 和 `--cursor`，搜索为字面包含/标签；游标绑定筛选条件。`trial list --task ID --family` 查题系历史，`grade list --trial ID` 查评价。
 
-所有列表支持 `--limit 1..100` 与 `--cursor`；任务按标签及标题/题面的字面包含匹配。返回游标只适用于原筛选条件，不代表跨请求快照。`trial list --task ID --family` 回看题系全部版本；`grade list --trial ID` 回看评价。题目修订和记录更正均追加新记录，保留证据引用。无替代撤销与删除不在首版。
+stdout 机器模式只返回一个 JSON 对象，错误具有 code、退出码、retryable；不会打印秘密。CLI 不调用隐藏 LLM。数字评分、目标距离和复杂推荐不在实现范围。
 
-机器模式 stdout 仅一个JSON对象，错误含稳定 code、退出码及 retryable；不会打印数据库秘密。数字评分、目标距离和复杂推荐不属于本实现。
+## 升级、卸载与验证
 
-## 验证
+```sh
+evalme-mvp upgrade
+evalme-mvp uninstall
+evalme-mvp uninstall --yes --purge-config
+```
+
+仅管理本安装器创建的程序和入口。默认保留配置和数据；purge-config 只清理默认配置和当前引用的自动生成凭据，不清空配置目录、不删除外部密码文件或数据库。使用自定义 `--config` 的文件须自行维护。旧版 npm/手工安装入口先按原方式卸载，不盲目接管。Node 与其他工具均保留。
 
 ```sh
 npm test
-# 必须使用独立真实PG测试实例，不能指向含用户数据的库。
 EVALME_TEST_PG_CONFIG=/private/test-app.json \
 EVALME_TEST_PG_ADMIN_CONFIG=/private/test-admin.json npm run test:pg
 ```
 
-不传PG配置时普通测试只证明SQLite及本地组件；`test:pg` 缺配置直接失败，不能用SQLite替代。测试用合成学习内容，不证明用户真实掌握。PTY测试需要 Python 3 标准库。产品验收和本轮限制见 [ACCEPTANCE.md](ACCEPTANCE.md)，TDD过程见 [evidence](evidence/)；部署/备份恢复与跨机步骤见部署说明。
+真实 PG 测试只用独立测试实例，禁止指向学习数据。PTY 测试需要 Python 3。安装生命周期测试在隔离 HOME 中运行真实打包与安装，需依赖缓存或 npm 网络访问。普通 npm test 缺 PG 时会跳过相关测试，不代表双库通过。

@@ -13,6 +13,9 @@ permissions:
 jobs:
   sqlite:
     name: MVP SQLite, CLI, Skill and package
+    strategy:
+      matrix:
+        node: ["22.16.0", "24"]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -22,12 +25,13 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: mvp/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - run: cmp package-lock.json npm-shrinkwrap.json
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm pack --dry-run

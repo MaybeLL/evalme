@@ -1,6 +1,6 @@
 {
   "name": "evalme-mvp-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Evidence-based personal practice CLI with SQLite and PostgreSQL",
@@ -8,7 +8,7 @@
     "evalme-mvp": "src/cli.mjs"
   },
   "engines": {
-    "node": ">=24.0.0 <25"
+    "node": ">=22.16.0 <23 || >=24.0.0 <25"
   },
   "files": [
     "src",
@@ -17,7 +17,9 @@
     "README.md",
     "DEPLOYMENT.md",
     "ACCEPTANCE.md",
-    "evidence"
+    "evidence",
+    "npm-shrinkwrap.json",
+    "INSTALLATION-ACCEPTANCE.md"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",

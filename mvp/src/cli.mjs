@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { Writable } from "node:stream";
+import { VERSION, compatibleNode, runtimeHint } from "./runtime.mjs";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -27,6 +29,9 @@ const BOOL = new Set([
   "all-versions",
   "family",
   "replace-config",
+  "force",
+  "yes",
+  "purge-config",
 ]);
 const COMMANDS = {
   init: [
@@ -37,7 +42,11 @@ const COMMANDS = {
     "replace-config",
   ],
   "id new": [],
-  "skill install": ["agent", "scope"],
+  doctor: [],
+  upgrade: ["source"],
+  uninstall: ["yes", "purge-config"],
+  "skill install": ["agent", "scope", "force", "cli-path"],
+  "skill uninstall": ["agent", "scope", "force"],
   "topic create": ["input"],
   "topic list": ["query", "limit", "cursor"],
   "topic get": [],
@@ -68,7 +77,7 @@ function parse(argv) {
       }
     } else pos.push(a);
   }
-  const key = pos[0] === "init" ? "init" : pos.slice(0, 2).join(" ");
+  const key = ["init","doctor","upgrade","uninstall"].includes(pos[0]) ? pos[0] : pos.slice(0, 2).join(" ");
   const allowed = new Set([...GLOBAL, ...(COMMANDS[key] || [])]);
   if (Object.keys(flags).some((k) => !allowed.has(k)))
     throw invalid("Unknown option.");
@@ -140,13 +149,16 @@ async function menu() {
   }
 }
 async function interactive(flags) {
-  if (flags.provider) return flags;
+  if (flags.provider && (flags.provider === "sqlite" || flags["connection-file"] || flags["non-interactive"] || flags.json)) return flags;
   if (flags.json || flags["non-interactive"] || !process.stdin.isTTY)
     throw invalid(
       "Non-interactive init requires --provider and connection options.",
     );
-  flags.provider = await menu();
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
+  flags.provider ||= await menu();
+  let muted = false;
+  const output = new Writable({write(chunk, enc, next) {if (!muted) process.stderr.write(chunk); next();}});
+  output.isTTY = true;
+  const rl = createInterface({ input: process.stdin, output, terminal:true });
   try {
     if (flags.provider === "sqlite")
       flags.path =
@@ -163,9 +175,10 @@ async function interactive(flags) {
         const database = (await rl.question("Database [evalme]: ")) || "evalme";
         const user =
           (await rl.question("Runtime user [evalme_app]: ")) || "evalme_app";
-        const secret_file = await rl.question(
-          "Password file absolute path (private 0600, never paste password here): ",
-        );
+        process.stderr.write("Password (hidden): ");
+        muted = true;
+        try {flags._password = await rl.question("");}
+        finally {muted = false;process.stderr.write("\n");}
         const tls = await rl.question(
           "TLS: verify-full [default] or none (local/private tailnet only): ",
         );
@@ -176,7 +189,6 @@ async function interactive(flags) {
           port,
           database,
           user,
-          secret_file,
           ssl: tls === "none" ? false : "verify-full",
         };
         if (tls !== "none") {
@@ -203,19 +215,19 @@ export async function main(argv = process.argv.slice(2)) {
     const parsed = parse(argv);
     ({ flags } = parsed);
     const { pos, key } = parsed;
-    if (flags.version) return emit({ version: "0.1.0", api_version: 1 }, flags);
+    if (flags.version) return emit({ version: VERSION, api_version: 1 }, flags);
     if (flags.help || argv.length === 0)
       return emit(
         {
           usage:
-            "evalme-mvp <init|id new|skill install|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
+            "evalme-mvp <init|doctor|upgrade|uninstall|id new|skill install/uninstall|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
           commands: COMMANDS,
           protocol: 1,
         },
         flags,
       );
     if (!Object.hasOwn(COMMANDS, key)) throw invalid("Unknown command.");
-    const count = key === "init" ? 1 : key.endsWith(" get") ? 3 : 2;
+    const count = ["init","doctor","upgrade","uninstall"].includes(key) ? 1 : key.endsWith(" get") ? 3 : 2;
     if (pos.length !== count)
       throw invalid("Wrong number of positional arguments.");
     if (
@@ -226,6 +238,16 @@ export async function main(argv = process.argv.slice(2)) {
         "API_VERSION_UNSUPPORTED",
         "Only API version 1 is supported.",
       );
+    if (!compatibleNode()) throw new AppError('RUNTIME_UNSUPPORTED', runtimeHint, 2);
+    if (key === 'doctor') {
+      const {doctor}=await import('./doctor.mjs');
+      const result=await doctor(flags);if(!result.ready) process.exitCode=5;
+      return emit(result,flags);
+    }
+    if (key === 'upgrade' || key === 'uninstall') {
+      const {upgrade,uninstall}=await import('./lifecycle.mjs');
+      return emit(await (key === 'upgrade' ? upgrade(flags) : uninstall(flags)),flags);
+    }
     if (key === "id new") return emit({ id: randomUUID() }, flags);
     if (key === "init") {
       await interactive(flags);
@@ -261,13 +283,14 @@ export async function main(argv = process.argv.slice(2)) {
         return emit(await initialize(flags), flags);
       }
     }
-    if (key === "skill install") {
-      const { installSkill } = await import("./skill-install.mjs");
+    if (key === "skill install" || key === "skill uninstall") {
+      const { installSkill, uninstallSkill } = await import("./skill-install.mjs");
       return emit(
-        await installSkill({
+        await (key === "skill uninstall" ? uninstallSkill : installSkill)({
           agent: flags.agent,
           scope: flags.scope || "user",
-          cliPath: fileURLToPath(import.meta.url),
+          cliPath: flags["cli-path"] || process.env.EVALME_LAUNCHER || fileURLToPath(import.meta.url),
+          force: flags.force || false,
         }),
         flags,
       );
@@ -362,7 +385,7 @@ export async function main(argv = process.argv.slice(2)) {
       exit === 1
         ? "Unexpected internal error."
         : exit === 6
-          ? "Database operation could not be completed; retry with the original ID."
+          ? (e instanceof AppError ? e.message : "Database operation could not be completed; retry with the original ID.")
           : e.message;
     const details = {};
     for (const k of ["field", "existing_id", "id", "expected", "actual"])
