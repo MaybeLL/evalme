@@ -13,7 +13,11 @@ async function answer(prompt) {
 }
 const text = (message, options = {}) => answer(p.text({message, output, ...options}));
 export async function confirmReplacement(target, previous) {
-  return answer(p.confirm({message:`将连接配置替换为 ${target}？原连接：${previous || "当前配置"}。已有学习数据会保留。`, initialValue:false, active:"替换", inactive:"保留原配置", vertical:true, output}));
+  const sameTarget = target === previous;
+  const message = sameTarget
+    ? `更新此连接的凭据与设置？连接：${target}。已有学习数据会保留。`
+    : `将连接配置替换为 ${target}？原连接：${previous || "当前配置"}。已有学习数据会保留。`;
+  return answer(p.confirm({message, initialValue:false, active:sameTarget ? "更新" : "替换", inactive:"保留原配置", vertical:true, output}));
 }
 export async function interactive(flags) {
   if (flags.provider && (flags.provider === 'sqlite' || flags['connection-file'] || flags['non-interactive'] || flags.json)) return flags;

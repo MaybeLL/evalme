@@ -262,7 +262,8 @@ test('guided empty PostgreSQL needs consent, transient admin, and preserves conf
  assert.ok(!accepted.output.includes('ADMIN_SYNTHETIC'));assert.ok(!accepted.output.includes('RUNTIME_SYNTHETIC'));
  assert.ok(!readFileSync(config,'utf8').includes('ADMIN_SYNTHETIC'));
  const saved=JSON.parse(readFileSync(config));assert.equal(saved.user,user);
- const ready=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'}]);
+ const ready=tty(config,[...steps,{expect:'更新此连接的凭据与设置',send:'y\r'}]);
  assert.equal(ready.error,null,ready.output);assert.equal(ready.status,0,ready.output);
+ assert.ok(!ready.output.includes('将连接配置替换为'));
  assert.ok(!ready.output.includes('临时管理'));assert.ok(!ready.output.includes('JSON 路径'));
 });
