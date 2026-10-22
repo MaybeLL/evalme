@@ -12,12 +12,26 @@ permissions:
 
 jobs:
   sqlite:
-    name: MVP SQLite, CLI, Skill and package
+    name: MVP databases, CLI, Skill and package
     strategy:
       matrix:
         node: ["22.16.0", "24"]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      EVALME_SETUP_PG_PORT: "5432"
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - "127.0.0.1:5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: mvp

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {interactive, confirmReplacement} from "./init-prompts.mjs";
+import {interactive, confirmReplacement, requestInitialization} from "./init-prompts.mjs";
 import { VERSION, compatibleNode, runtimeHint } from "./runtime.mjs";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -157,24 +157,19 @@ export async function main(argv = process.argv.slice(2)) {
     if (key === "init") {
       await interactive(flags);
       try {
-        return emit(await initialize(flags), flags);
-      } catch (e) {
-        if (
-          e.code !== "CONFIG_CONFLICT" ||
-          flags.json ||
-          flags["non-interactive"] ||
-          !process.stdin.isTTY
-        )
-          throw e;
-        const target =
-          flags.provider === "sqlite"
-            ? flags.path
-            : flags._connectionValues?.host || flags["connection-file"];
-        if (!(await confirmReplacement(target)))
-          throw new AppError("CONFIG_CONFLICT", "Configuration unchanged.", 4);
-        flags["replace-config"] = true;
-        return emit(await initialize(flags), flags);
-      }
+        while(true) {
+          try {return emit(await initialize(flags),flags);}
+          catch(e) {
+            if(flags.json || flags['non-interactive'] || !process.stdin.isTTY) throw e;
+            if(e.code === 'CONFIG_CONFLICT' && !flags['replace-config']) {
+              if(!(await confirmReplacement(e.details.next,e.details.previous))) throw new AppError('CONFIG_CONFLICT','原配置保持不变。',4);
+              flags['replace-config']=true;
+            } else if(e.code === 'SCHEMA_SETUP_REQUIRED' && !flags._admin && !flags['admin-connection-file']) {
+              flags._admin=await requestInitialization(e.details.target);
+            } else throw e;
+          }
+        }
+      } finally {delete flags._password;delete flags._admin;}
     }
     if (key === "skill install" || key === "skill uninstall") {
       const { installSkill, uninstallSkill } = await import("./skill-install.mjs");
@@ -281,7 +276,7 @@ export async function main(argv = process.argv.slice(2)) {
           ? (e instanceof AppError ? e.message : "Database operation could not be completed; retry with the original ID.")
           : e.message;
     const details = {};
-    for (const k of ["field", "existing_id", "id", "expected", "actual"])
+    for (const k of ["field", "existing_id", "id", "expected", "actual", "cause"])
       if (e.details?.[k] !== undefined) details[k] = e.details[k];
     const result = {
       ok: false,

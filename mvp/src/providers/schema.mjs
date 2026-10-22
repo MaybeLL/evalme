@@ -28,3 +28,5 @@ export function schema(dialect) {
     "CREATE INDEX IF NOT EXISTS grades_trial_order ON grades(trial_id,created_at,id)",
   ];
 }
+
+export const postgresGradeForeignKey = "ALTER TABLE trials ADD CONSTRAINT trials_based_on_grade_fk FOREIGN KEY(based_on_grade_id) REFERENCES grades(id)";

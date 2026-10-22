@@ -25,7 +25,7 @@ evalme-mvp init --provider sqlite --path /absolute/data.sqlite3 --config /absolu
 evalme-mvp init --provider postgres --connection-file /absolute/app.json --config /absolute/config.json --non-interactive --json
 ```
 
-远程客户端使用 SELECT/INSERT 应用账号。仅服务端首次建 schema 时临时提供 `--admin-connection-file`；管理员身份不存入运行配置。`ssl` 显式为 `"verify-full"` 或 `false`。false 只用于已确认的 loopback/私有 tailnet，不代表 PG TLS。配置文件及秘密文件均须为 0600 普通文件。
+远程客户端使用 SELECT/INSERT 应用账号。未建表时，交互向导才询问是否初始化和临时管理用户名/密码；机器调用可显式提供 `--admin-connection-file`。管理身份必须指向同一服务器、端口、数据库及 TLS 设置，且不存入运行配置。`ssl` 显式为 `"verify-full"` 或 `false`。false 只用于已确认的 loopback/私有 tailnet，不代表 PG TLS。配置文件及秘密文件均须为 0600 普通文件。
 
 ## Skill 与诊断
 
@@ -76,3 +76,29 @@ EVALME_TEST_PG_ADMIN_CONFIG=/private/test-admin.json npm run test:pg
 ```
 
 真实 PG 测试只用独立测试实例，禁止指向学习数据。PTY 测试需要 Python 3。安装生命周期测试在隔离 HOME 中运行真实打包与安装，需依赖缓存或 npm 网络访问。普通 npm test 缺 PG 时会跳过相关测试，不代表双库通过。
+
+
+### 数据库状态与故障恢复
+
+普通向导不询问连接 JSON 路径。首次用户默认本机 SQLite；PostgreSQL 会只读检测固定 evalme schema 的表、列、约束、索引、版本和运行时权限。已就绪时不执行 DDL 或授权；完全未初始化时才提供建表。部分对象、未知对象或结构变化会拒绝自动修复。高级显式管理参数也遵守该规则，这是比旧版 CREATE IF NOT EXISTS 更严格的行为。
+
+所有路径在数据库写入前确认旧配置替换，同目标重新输入凭据也需确认。新库仅显式授予 schema_meta SELECT，业务表 SELECT/INSERT；既有 schema_meta INSERT（包含默认授权）仍兼容，不撤销管理员预设权限。管理凭据仅在本次进程内使用；应用凭据验证成功后才保存。
+
+| 错误码 | 退出码 | 下一步 |
+| --- | --- | --- |
+| SCHEMA_SETUP_REQUIRED | 5 | 运行交互 init，或显式提供管理连接初始化 |
+| SCHEMA_INCOMPATIBLE | 5 | 联系管理员检查结构，不自动补表或迁移 |
+| SCHEMA_CHECK_FAILED | 5 | 无法可靠检测，请管理员检查目录访问和服务兼容性 |
+| DB_NOT_FOUND | 5 | 请管理员先创建目标数据库 |
+| DB_PERMISSION_DENIED / UNSAFE_RUNTIME_ROLE | 5 | 管理员修正应用账号权限，再运行 init |
+| CONFIG_AUTH_FAILED / DB_TLS_FAILED | 5 | 修正认证或证书配置，再运行 init |
+| DB_CONNECTION_FAILED / DB_BUSY | 6 | 检查网络或稍后重试 |
+| CONFIG_CONFLICT | 4 | 明确确认替换；机器模式使用 --replace-config |
+| CANCELLED | 130 | 原配置保留，可重新运行 init |
+| COMMIT_UNKNOWN | 6 | 提交结果未知，重新运行 init 只读检测，不盲目重复建表 |
+| INIT_VERIFICATION_FAILED | 5 | 结构已初始化，应用验证失败；检查网络/权限后重新 init，旧配置保留 |
+| INIT_CONFIG_SAVE_FAILED | 5 | 结构已初始化，修复本机保存位置后重新 init |
+
+提交之前的初始化失败会回滚建表和授权；提交之后不承诺远端回滚。没有任何失败恢复路径会删除学习数据。权限或管理认证失败可修正后重新运行向导。
+
+结构检测契约由实际 DDL 在一次性测试数据库中生成，当前在 PostgreSQL 18 验证；其他 PostgreSQL 大版本尚未验收。修改 schema 后必须重新生成 `src/providers/postgres-schema-contract.json` 并运行结构一致性测试。开发环境可指定专用测试实例 `EVALME_SETUP_PG_PORT`（127.0.0.1，测试 postgres 账号），运行 `node scripts/dev/schema-contract.mjs`；该命令会创建并删除一个随机测试数据库，不能指向生产服务。

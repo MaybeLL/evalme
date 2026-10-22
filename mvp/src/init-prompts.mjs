@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts';
-import {isAbsolute} from 'node:path';
+import {isAbsolute,join} from 'node:path';
+import {homedir} from 'node:os';
 import {AppError, invalid} from './config.mjs';
 const output = process.stderr;
 async function answer(prompt) {
@@ -11,22 +12,19 @@ async function answer(prompt) {
   return value;
 }
 const text = (message, options = {}) => answer(p.text({message, output, ...options}));
-export async function confirmReplacement(target) {
-  return answer(p.confirm({message:`将连接配置替换为 ${target}？已有学习数据会保留。`, initialValue:false, active:"替换", inactive:"保留原配置", vertical:true, output}));
+export async function confirmReplacement(target, previous) {
+  return answer(p.confirm({message:`将连接配置替换为 ${target}？原连接：${previous || "当前配置"}。已有学习数据会保留。`, initialValue:false, active:"替换", inactive:"保留原配置", vertical:true, output}));
 }
 export async function interactive(flags) {
   if (flags.provider && (flags.provider === 'sqlite' || flags['connection-file'] || flags['non-interactive'] || flags.json)) return flags;
   if (flags.json || flags['non-interactive'] || !process.stdin.isTTY)
     throw invalid('Non-interactive init requires --provider and connection options.');
   p.intro('EvalMe 初始化', {output});
-  flags.provider ||= await answer(p.select({message:'请选择数据库（↑/↓ 切换，Enter 确认）', output, showInstructions:false,
-    options:[{value:'sqlite',label:'SQLite',hint:'本机保存'}, {value:'postgres',label:'PostgreSQL',hint:'连接共享数据库'}]}));
+  flags.provider ||= await answer(p.select({message:'你想如何保存学习数据？（↑/↓ 切换，Enter 确认）', output, showInstructions:false,
+    options:[{value:'sqlite',label:'在这台电脑上保存',hint:'SQLite，推荐，无需准备数据库'}, {value:'postgres',label:'连接 PostgreSQL',hint:'多台设备共享数据'}]}));
   if (flags.provider === 'sqlite') {
-    flags.path = await text('SQLite 文件绝对路径（回车使用默认位置）', {validate:v => v && !isAbsolute(v) ? '请输入绝对路径。' : undefined}) || undefined;
+    flags.path = await text(`SQLite 文件绝对路径（回车使用 ${join(homedir(),'.local/share/evalme-mvp/evalme.sqlite3')}）`, {validate:v => v && !isAbsolute(v) ? '请输入绝对路径。' : undefined}) || undefined;
   } else {
-    const existing = await text('已有连接 JSON 路径（可选，回车填写连接信息）');
-    if (existing) flags['connection-file'] = existing;
-    else {
       const host = await text('PostgreSQL 地址', {validate:v => !v?.trim() ? '请输入服务器地址。' : undefined});
       const port = Number(await text('端口', {defaultValue:'5432', placeholder:'5432', validate:v => v && (!/^\d+$/.test(v) || Number(v)<1 || Number(v)>65535) ? '端口必须是 1–65535 的整数。' : undefined}));
       const database = await text('数据库名称', {defaultValue:'evalme', placeholder:'evalme'});
@@ -40,9 +38,16 @@ export async function interactive(flags) {
         const ca = await text('CA 证书路径（可选，回车使用系统证书）');
         if (ca) flags._connectionValues.ca_file = ca;
       }
-    }
-    flags['admin-connection-file'] = await text('管理员连接 JSON 路径（可选，仅用于初始化数据库结构）') || undefined;
   }
-  p.outro('信息已收集，正在验证并保存连接。', {output});
+  p.log.info('正在检查连接和数据库状态。', {output});
   return flags;
+}
+
+export async function requestInitialization(target) {
+  p.log.info('当前数据库尚未初始化 EvalMe。', {output});
+  const yes=await answer(p.confirm({message:`初始化 ${target}？将创建表、索引和约束，授予应用账号读写权限，不删除已有数据。`, initialValue:false, active:'初始化（需要管理员协助）',inactive:'暂不初始化',vertical:true,output}));
+  if(!yes) throw new AppError('CANCELLED','未初始化，连接未保存，旧配置保持不变。',130);
+  const user=await text('临时管理用户名', {validate:v=>!v?.trim()?'请输入管理用户名。':undefined});
+  const password=await answer(p.password({message:'临时管理密码（仅本次使用，不保存）',output,validate:v=>!v?'请输入密码。':undefined}));
+  return {user,password};
 }

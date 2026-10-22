@@ -17,7 +17,7 @@ import os,sys,json,pty,select,time,re,signal,fcntl,termios,struct
 spec=json.loads(sys.argv[1]); pid,fd=pty.fork()
 if pid==0:
  fcntl.ioctl(0,termios.TIOCSWINSZ,struct.pack('HHHH',40,120,0,0))
- os.execv(spec['node'],[spec['node'],spec['cli'],'init','--config',spec['config']])
+ os.execv(spec['node'],[spec['node'],spec['cli'],'init','--config',spec['config']]+spec.get('args',[]))
 output=''; cursor=0; error=None; status=None
 def receive(deadline):
  global output,status
@@ -56,13 +56,13 @@ function fixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return { dir, config: join(dir, "config.json") };
 }
-function tty(config, steps) {
+function tty(config, steps, args = []) {
   const r = spawnSync(
     "python3",
     [
       "-c",
       python,
-      JSON.stringify({ node: process.execPath, cli, config, steps }),
+      JSON.stringify({ node: process.execPath, cli, config, steps, args }),
     ],
     { encoding: "utf8", timeout: 25000 },
   );
@@ -70,13 +70,13 @@ function tty(config, steps) {
   return JSON.parse(r.stdout);
 }
 const selectSQLite = [
-  { expect: "● SQLite", send: "\x1b[B" },
-  { expect: "● PostgreSQL", send: "\x1b[A" },
-  { expect: "● SQLite", send: "\r" },
+  { expect: "● 在这台电脑上保存", send: "\x1b[B" },
+  { expect: "● 连接 PostgreSQL", send: "\x1b[A" },
+  { expect: "● 在这台电脑上保存", send: "\r" },
 ];
 const selectPG = [
-  { expect: "● SQLite", send: "\x1b[B" },
-  { expect: "● PostgreSQL", send: "\r" },
+  { expect: "● 在这台电脑上保存", send: "\x1b[B" },
+  { expect: "● 连接 PostgreSQL", send: "\r" },
 ];
 function initOld(config, path) {
   const r = spawnSync(
@@ -114,13 +114,7 @@ test("real PTY PostgreSQL missing connection file preserves old configuration", 
   initOld(config, join(dir, "old.sqlite"));
   const before = readFileSync(config, "utf8");
   const r = tty(config, [
-    ...selectPG,
-    {
-      expect: "已有连接 JSON 路径",
-      send: join(dir, "missing.json") + "\n",
-    },
-    { expect: "管理员连接 JSON 路径", send: "\n" },
-  ]);
+  ], ['--provider','postgres','--connection-file',join(dir,'missing.json')]);
   assert.equal(r.error, null, r.output);
   assert.equal(r.status, 5, r.output);
   assert.equal(readFileSync(config, "utf8"), before);
@@ -145,10 +139,7 @@ test("real PTY PostgreSQL unsafe secret permissions preserve old configuration",
     { mode: 0o600 },
   );
   const r = tty(config, [
-    ...selectPG,
-    { expect: "已有连接 JSON 路径", send: connection + "\n" },
-    { expect: "管理员连接 JSON 路径", send: "\n" },
-  ]);
+  ], ['--provider','postgres','--connection-file',connection]);
   assert.equal(r.error, null, r.output);
   assert.equal(r.status, 5, r.output);
   assert.equal(readFileSync(config, "utf8"), before);
@@ -187,7 +178,7 @@ test("real PTY switching SQLite target requires displayed target and explicit co
 test('real PTY PostgreSQL menu initializes against live PG and saves only runtime identity',{skip:!process.env.EVALME_TEST_PG_CONFIG},t=>{
  const {config}=fixture(t),connectionPath=process.env.EVALME_TEST_PG_CONFIG;
  const expected=JSON.parse(readFileSync(connectionPath,'utf8'));
- const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:connectionPath+'\n'},{expect:'管理员连接 JSON 路径',send:(process.env.EVALME_TEST_PG_ADMIN_CONFIG||'')+'\n'}]);
+ const r=tty(config,[],['--provider','postgres','--connection-file',connectionPath]);
  assert.equal(r.error,null,r.output);assert.equal(r.status,0,r.output);
  const saved=JSON.parse(readFileSync(config,'utf8'));
  assert.equal(saved.provider,'postgres');assert.equal(saved.host,expected.host);assert.equal(saved.port,expected.port);assert.equal(saved.database,expected.database);assert.equal(saved.user,expected.user);assert.equal(saved.secret_file,expected.secret_file);
@@ -201,14 +192,13 @@ test('guided PostgreSQL hides password and saves managed credentials',{skip:!pro
  const c=JSON.parse(readFileSync(process.env.EVALME_TEST_PG_CONFIG,'utf8'));
  const password=readFileSync(c.secret_file,'utf8').replace(/\r?\n$/,'');
  const steps=[...selectPG,
- {expect:'已有连接 JSON 路径',send:'\n'},
  {expect:'PostgreSQL 地址',send:c.host+'\n'},
  {expect:'端口',send:String(c.port)+'\n'},
  {expect:'数据库名称',send:c.database+'\n'},
  {expect:'应用用户名',send:c.user+'\n'},
  {expect:'数据库密码',send:password+'\n'},
  {expect:'TLS 连接方式',send:'\x1b[B\r'},
- {expect:'管理员连接 JSON 路径',send:'\n'}];
+];
  const r=tty(config,steps);
  assert.ok(!r.output.includes(password),'Password must not appear in terminal output');
  assert.equal(r.error,null);assert.equal(r.status,0);
@@ -220,7 +210,7 @@ test('guided PostgreSQL hides password and saves managed credentials',{skip:!pro
 });
 test('guided PostgreSQL cancellation never persists or echoes password',t=>{
  const {dir,config}=fixture(t);const password='synthetic-private-password';
- const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:'\n'},
+ const r=tty(config,[...selectPG,
  {expect:'PostgreSQL 地址',send:'127.0.0.1\n'},{expect:'端口',send:'1\n'},
  {expect:'数据库名称',send:'\n'},{expect:'应用用户名',send:'\n'},
  {expect:'数据库密码',send:password+'\n'},{expect:'TLS 连接方式',send:'\x03'}]);
@@ -229,20 +219,50 @@ test('guided PostgreSQL cancellation never persists or echoes password',t=>{
 
 test('Clack renders vertical radio choices and cancels without saving', t => {
  const {config}=fixture(t);
- const r=tty(config,[{expect:'○ PostgreSQL',send:'\x03'}]);
+ const r=tty(config,[{expect:'○ 连接 PostgreSQL',send:'\x03'}]);
  assert.equal(r.error,null,r.output);
- assert.match(r.output,/● SQLite[^\n]*\n[^\n]*○ PostgreSQL/);
+ assert.match(r.output,/● 在这台电脑上保存[^\n]*\n[^\n]*○ 连接 PostgreSQL/);
  assert.match(r.output,/已取消/);
  assert.equal(r.status,130);
  assert.equal(existsSync(config),false);
 });
 test('Clack validates PostgreSQL port before continuing', t => {
  const {config}=fixture(t);
- const r=tty(config,[...selectPG,{expect:'已有连接 JSON 路径',send:'\r'},
+ const r=tty(config,[...selectPG,
  {expect:'PostgreSQL 地址',send:'127.0.0.1\r'},
  {expect:'端口',send:'70000\r'},
  {expect:'端口必须是',send:'\x03'}]);
  assert.equal(r.error,null,r.output);
  assert.equal(r.status,130);
  assert.equal(existsSync(config),false);
+});
+
+test('guided empty PostgreSQL needs consent, transient admin, and preserves config on refusal',{skip:!process.env.EVALME_SETUP_PG_PORT},async t=>{
+ const {default:pg}=await import('pg');const {randomUUID}=await import('node:crypto');
+ const {dir,config}=fixture(t);const id=randomUUID().replaceAll('-','');const database='tty_'+id,user='ttyapp_'+id;
+ const port=Number(process.env.EVALME_SETUP_PG_PORT);
+ const root=new pg.Client({host:'127.0.0.1',port,user:'postgres',database:'postgres'});await root.connect();
+ await root.query(`CREATE ROLE "${user}" LOGIN`);await root.query(`CREATE DATABASE "${database}"`);
+ t.after(async()=>{await root.query(`DROP DATABASE "${database}" WITH (FORCE)`);await root.query(`DROP ROLE "${user}"`);await root.end();});
+ initOld(config,join(dir,'old.sqlite'));const before=readFileSync(config,'utf8');
+ const steps=[...selectPG,{expect:'PostgreSQL 地址',send:'127.0.0.1\r'},{expect:'端口',send:String(port)+'\r'},
+ {expect:'数据库名称',send:database+'\r'},{expect:'应用用户名',send:user+'\r'},
+ {expect:'数据库密码',send:'RUNTIME_SYNTHETIC\r'},{expect:'TLS 连接方式',send:'\x1b[B\r'}];
+ // Reject replacing the old local connection, before any initialization prompt.
+ const reject=tty(config,[...steps,{expect:'将连接配置替换为',send:'\r'}]);
+ assert.equal(reject.error,null,reject.output);assert.equal(reject.status,4);assert.equal(readFileSync(config,'utf8'),before);
+ const refused=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'},{expect:'暂不初始化',send:'\r'}]);
+ assert.equal(refused.error,null,refused.output);assert.equal(refused.status,130);assert.equal(readFileSync(config,'utf8'),before);
+ const check=new pg.Client({host:'127.0.0.1',port,user:'postgres',database});await check.connect();
+ assert.equal((await check.query("SELECT 1 FROM pg_namespace WHERE nspname='evalme'")).rowCount,0);await check.end();
+ const accepted=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'},
+ {expect:'暂不初始化',send:'y\r'}, {expect:'临时管理用户名',send:'postgres\r'},
+ {expect:'临时管理密码',send:'ADMIN_SYNTHETIC\r'}]);
+ assert.equal(accepted.error,null,accepted.output);assert.equal(accepted.status,0,accepted.output);
+ assert.ok(!accepted.output.includes('ADMIN_SYNTHETIC'));assert.ok(!accepted.output.includes('RUNTIME_SYNTHETIC'));
+ assert.ok(!readFileSync(config,'utf8').includes('ADMIN_SYNTHETIC'));
+ const saved=JSON.parse(readFileSync(config));assert.equal(saved.user,user);
+ const ready=tty(config,[...steps,{expect:'将连接配置替换为',send:'y\r'}]);
+ assert.equal(ready.error,null,ready.output);assert.equal(ready.status,0,ready.output);
+ assert.ok(!ready.output.includes('临时管理'));assert.ok(!ready.output.includes('JSON 路径'));
 });

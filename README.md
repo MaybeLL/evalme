@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/MaybeLL/evalme/main/mvp/scripts/ins
 初始化选择：
 
 - **SQLite**：本机保存，直接使用默认位置即可。
-- **PostgreSQL**：填写地址、端口、数据库名、应用用户名和密码（输入隐藏）。自动生成权限为 0600 的凭据及配置，验证成功才保存。服务端需提前完成部署和 schema 初始化。
+- **PostgreSQL**：填写地址、端口、数据库名、应用用户名和密码（输入隐藏）。自动生成权限为 0600 的凭据及配置，验证成功才保存。已准备好的库直接连接；尚未建表时，向导会在确认后临时使用管理员身份初始化并授权。服务、目标数据库和应用账号需由管理员事先准备，CLI 不自动安装服务、建库或创建账号。
 
 公司电脑连接个人服务器时，先连同一 Tailscale 网络。仅当网络确实为私有 tailnet/loopback 时选择 TLS `none`；默认 `verify-full` 验证数据库证书。无需手写 JSON、传凭据文件或执行 chmod。不要在聊天里提交密码。
 
@@ -57,3 +57,5 @@ sh /absolute/evalme/mvp/scripts/install.sh --source /absolute/evalme
 - [PostgreSQL 服务端部署](mvp/DEPLOYMENT.md)
 - [0.2.0 安装改造与验收](mvp/INSTALLATION-ACCEPTANCE.md)
 - [原始本机验收与证据](mvp/ACCEPTANCE.md)
+
+初始化流程、权限边界和故障恢复见[初始化设计](docs/init-experience-design.md)。

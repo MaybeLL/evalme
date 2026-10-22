@@ -59,7 +59,7 @@ export function privateJson(path) {
 export function connection(path) {
   return parseConnection(privateJson(path));
 }
-function parseConnection(c) {
+function parseConnection(c, suppliedPassword) {
   const allowed = [
     "host",
     "port",
@@ -72,13 +72,14 @@ function parseConnection(c) {
   ];
   if (Object.keys(c).some((k) => !allowed.includes(k)))
     throw invalid("Unknown connection field.");
-  for (const key of ["host", "database", "user", "secret_file"])
+  for (const key of ["host", "database", "user", ...(suppliedPassword === undefined ? ["secret_file"] : [])])
     if (typeof c[key] !== "string" || !c[key].trim())
       throw invalid(`Connection requires ${key}.`);
   if (!Number.isInteger(c.port) || c.port < 1 || c.port > 65535)
     throw invalid("Invalid port.");
+  let password = suppliedPassword;
+  if (suppliedPassword === undefined) {
   absolute(c.secret_file);
-  let password;
   try {
     const st = lstatSync(c.secret_file);
     if (!st.isFile() || st.isSymbolicLink() || st.mode & 0o077)
@@ -90,6 +91,7 @@ function parseConnection(c) {
       "CREDENTIALS_UNAVAILABLE",
       "Credential file must be a readable private regular file.",
     );
+  }
   }
   if (c.ssl !== false && c.ssl !== "verify-full")
     throw invalid("ssl must be false or verify-full; choose explicitly.");
@@ -149,7 +151,8 @@ function save(path, value) {
 }
 export async function assertRuntimePrivileges(c, {requireTables = false} = {}) {
   const { default: pg } = await import("pg");
-  const client = new pg.Client({ ...c, connectionTimeoutMillis: 5000 });
+  const client = new pg.Client({ ...c, connectionTimeoutMillis: 5000, statement_timeout: 5000 });
+  client.on('error',()=>{});
   try {
     await client.connect();
     const { rows } = await client.query(
@@ -161,6 +164,8 @@ export async function assertRuntimePrivileges(c, {requireTables = false} = {}) {
         "Use a dedicated SELECT/INSERT runtime role without administrative memberships.",
       );
     if (requireTables) {
+      const usage=await client.query("SELECT has_schema_privilege(current_user,'evalme','USAGE') AS ok");
+      if(!usage.rows[0]?.ok) throw new AppError('DB_PERMISSION_DENIED','应用账号缺少 evalme schema USAGE 权限。');
       for (const table of ['tasks','trials','grades','topics','task_topics','schema_meta']) {
         const {rows} = await client.query("SELECT has_table_privilege(current_user, $1, 'SELECT') AS r, has_table_privilege(current_user, $1, 'INSERT') AS w", [`evalme.${table}`]);
         if (!rows[0]?.r || (table !== 'schema_meta' && !rows[0]?.w))
@@ -169,38 +174,25 @@ export async function assertRuntimePrivileges(c, {requireTables = false} = {}) {
     }
   } catch (e) {
     if (e instanceof AppError) throw e;
-    if (e.code === '42501') throw new AppError('DB_PERMISSION_DENIED', 'PostgreSQL permission denied.');
-    if (['DEPTH_ZERO_SELF_SIGNED_CERT','SELF_SIGNED_CERT_IN_CHAIN','CERT_HAS_EXPIRED','UNABLE_TO_VERIFY_LEAF_SIGNATURE','ERR_TLS_CERT_ALTNAME_INVALID'].includes(e.code))
-      throw new AppError('DB_TLS_FAILED', 'TLS verification failed; check hostname and CA certificate.');
-    const unavailable = ["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNRESET", "EAI_AGAIN"].includes(
-      e.code,
-    ) || /timeout|connection terminated/i.test(e.message || '');
-    throw new AppError(
-      unavailable ? "DB_CONNECTION_FAILED" : "CONFIG_AUTH_FAILED",
-      unavailable
-        ? "PostgreSQL is unavailable."
-        : "PostgreSQL authentication or permission validation failed.",
-      unavailable ? 6 : 5,
-    );
+    const {pgError}=await import('./postgres-setup.mjs');
+    throw pgError(e);
   } finally {
     await client.end().catch(() => {});
   }
 }
-export async function initialize(flags) {
-  if (flags._password === undefined) return initializeSaved(flags);
-  if (typeof flags._password !== 'string' || !flags._password || /[\r\n\x00]/.test(flags._password))
-    throw invalid('Password must be a nonempty single line.');
-  const parent = dirname(absolute(configPath(flags)));
-  mkdirSync(parent, {recursive:true, mode:0o700});
-  const st=lstatSync(parent);
-  if (!st.isDirectory() || st.isSymbolicLink()) throw invalid('Configuration directory must be a real directory.');
-  const secret_file=join(parent, `credential-${randomUUID()}.secret`);
-  writeFileSync(secret_file, flags._password, {mode:0o600,flag:'wx'});
-  try {
-    return await initializeSaved({...flags,_connectionValues:{...flags._connectionValues,secret_file}});
-  } catch(e) {unlinkSync(secret_file);throw e;}
+export function connectionTarget(c) {
+  return c.provider === 'sqlite' ? c.path : `${c.host}:${c.port}/${c.database}（${c.user}，schema: evalme）`;
 }
-async function initializeSaved(flags) {
+export async function initialize(flags) {
+  let interrupted=false;
+  const onInterrupt=()=>{interrupted=true;};
+  const checkpoint=()=>{if(interrupted) throw new AppError('CANCELLED','初始化已取消，旧配置保持不变。',130);};
+  process.on('SIGINT',onInterrupt);
+  try {return await initializeSaved(flags,checkpoint);}
+  finally {process.off('SIGINT',onInterrupt);}
+}
+async function initializeSaved(flags, checkpoint) {
+  if (flags._password !== undefined && (typeof flags._password !== "string" || !flags._password || /[\r\n\x00]/.test(flags._password))) throw invalid("Password must be a nonempty single line.");
   const path = absolute(configPath(flags));
   let saved, runtime;
   if (flags.provider === "sqlite") {
@@ -216,7 +208,7 @@ async function initializeSaved(flags) {
     if (flags.path)
       throw invalid("SQLite path cannot be used with PostgreSQL.");
     ({ saved, runtime } = flags._connectionValues
-      ? parseConnection(flags._connectionValues)
+      ? parseConnection(flags._connectionValues, flags._password)
       : connection(flags["connection-file"]));
   } else throw invalid("Select sqlite or postgres.");
   if (existsSync(path)) {
@@ -229,8 +221,11 @@ async function initializeSaved(flags) {
         "CONFIG_CONFLICT",
         "Configuration differs; use --replace-config to switch without deleting data.",
         4,
+        {previous:connectionTarget(before),next:connectionTarget(saved)},
       );
   }
+  checkpoint();
+  let remoteInitialized=false;
   const { openStore } = await import("./core.mjs");
   if (runtime.provider === "sqlite") {
     mkdirSync(dirname(runtime.path), { recursive: true, mode: 0o700 });
@@ -257,29 +252,46 @@ async function initializeSaved(flags) {
       await store.close();
     }
   } else {
+    const {inspectPostgres,initializePostgres} = await import('./postgres-setup.mjs');
     await assertRuntimePrivileges(runtime);
-    if (flags["admin-connection-file"]) {
-      const admin = connection(flags["admin-connection-file"]).runtime;
-      for (const k of ["host", "port", "database"])
-        if (admin[k] !== runtime[k])
-          throw invalid(
-            "Admin and runtime connections must target the same endpoint and database.",
-          );
-      const store = await openStore(admin);
-      try {
-        await store.initialize();
-      } finally {
-        await store.close();
-      }
+    const admin = flags._admin ? {...runtime,user:flags._admin.user,password:flags._admin.password} : flags['admin-connection-file'] ? connection(flags['admin-connection-file']).runtime : undefined;
+    if (admin) {
+      for (const k of ['host','port','database']) if (admin[k] !== runtime[k]) throw invalid('Admin and runtime connections must target the same endpoint and database.');
+      if (JSON.stringify(admin.ssl) !== JSON.stringify(runtime.ssl)) throw invalid('Admin and runtime TLS settings must match.');
     }
-    const store = await openStore(runtime);
+    const state=await inspectPostgres(runtime);
+    checkpoint();
+    if(state === 'UNINITIALIZED') {
+      if (!admin) throw new AppError('SCHEMA_SETUP_REQUIRED','当前数据库尚未初始化 EvalMe。请运行交互式 init 或由管理员初始化。',5,{target:connectionTarget(saved)});
+      await initializePostgres(admin,runtime,checkpoint);
+      remoteInitialized=true;
+    }
     try {
-      await store.checkSchema();
-    } finally {
-      await store.close();
+      checkpoint();
+      if(await inspectPostgres(runtime) !== 'READY') throw new AppError('SCHEMA_SETUP_REQUIRED','数据库尚未初始化。');
+      await assertRuntimePrivileges(runtime,{requireTables:true});
+      checkpoint();
+    } catch(e) {
+      if(remoteInitialized) throw new AppError('INIT_VERIFICATION_FAILED','数据库结构已初始化，应用连接验证未通过，旧配置保持不变。请检查网络或联系管理员处理权限，再运行 init。',5,{cause:e.code});
+      throw e;
     }
-    await assertRuntimePrivileges(runtime, {requireTables:true});
   }
-  save(path, saved);
+  let createdSecret;
+  try {
+    checkpoint();
+    if(flags._password !== undefined) {
+      mkdirSync(dirname(path),{recursive:true,mode:0o700});
+      const st=lstatSync(dirname(path));
+      if(!st.isDirectory() || st.isSymbolicLink()) throw invalid('Configuration directory must be a real directory.');
+      createdSecret=join(dirname(path),`credential-${randomUUID()}.secret`);
+      writeFileSync(createdSecret,flags._password,{mode:0o600,flag:'wx'});
+      saved={...saved,secret_file:createdSecret};
+    }
+    save(path,saved);
+  } catch(e) {
+    if(createdSecret && existsSync(createdSecret)) unlinkSync(createdSecret);
+    if(remoteInitialized) throw new AppError('INIT_CONFIG_SAVE_FAILED','数据库已初始化，本机配置未保存；请修复本机配置目录后重新运行 init。');
+    throw e;
+  }
   return { provider: runtime.provider, config: path };
 }

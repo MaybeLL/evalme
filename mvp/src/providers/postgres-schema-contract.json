@@ -1,0 +1,1076 @@
+{
+  "source": "0847efdd404139176cdfd541589b46afa2caca8a45964c14d8fe8036f7f81197",
+  "structure": {
+    "relations": [
+      {
+        "name": "grades",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "grades_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "grades_supersedes_grade_id_key",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "grades_trial_order",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "schema_meta",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "schema_meta_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "task_topics",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "task_topics_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "task_topics_reverse",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "tasks",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "tasks_family_id_version_key",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "tasks_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "tasks_previous_task_id_key",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "topics",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "topics_name_key_key",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "topics_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "trials",
+        "kind": "r",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "trials_based_on",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "trials_pkey",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "trials_supersedes_trial_id_key",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      },
+      {
+        "name": "trials_task_order",
+        "kind": "i",
+        "persistence": "p",
+        "rls": false,
+        "force_rls": false
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "grades",
+        "name": "basis",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "correction_reason",
+        "type": "text",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "evaluator",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "feedback",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "findings",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "payload_hash",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "schema_version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "supersedes_grade_id",
+        "type": "uuid",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "trial_id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "grades",
+        "name": "uncertainties",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "schema_meta",
+        "name": "version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "task_topics",
+        "name": "task_id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "task_topics",
+        "name": "topic_id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "background",
+        "type": "text",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "family_id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "payload_hash",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "previous_task_id",
+        "type": "uuid",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "prompt",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "reference_answer",
+        "type": "text",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "rubric",
+        "type": "jsonb",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "schema_version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "search_text",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "source",
+        "type": "jsonb",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "title",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "tasks",
+        "name": "version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "name",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "name_key",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "payload_hash",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "topics",
+        "name": "schema_version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "answer",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "answer_kind",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "based_on_grade_id",
+        "type": "uuid",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "conditions",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "correction_reason",
+        "type": "text",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "occurred_at",
+        "type": "timestamp with time zone",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "payload_hash",
+        "type": "text",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "process",
+        "type": "jsonb",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "schema_version",
+        "type": "integer",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "source",
+        "type": "jsonb",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "supersedes_trial_id",
+        "type": "uuid",
+        "required": false,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      },
+      {
+        "table_name": "trials",
+        "name": "task_id",
+        "type": "uuid",
+        "required": true,
+        "identity": "",
+        "generated": "",
+        "default_value": null
+      }
+    ],
+    "constraints": [
+      {
+        "table_name": "grades",
+        "kind": "c",
+        "definition": "CHECK ((schema_version = 1))",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "f",
+        "definition": "FOREIGN KEY (supersedes_grade_id) REFERENCES grades(id)",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "f",
+        "definition": "FOREIGN KEY (trial_id) REFERENCES trials(id)",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL basis",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL created_at",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL evaluator",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL feedback",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL findings",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL id",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL payload_hash",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL schema_version",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL trial_id",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "n",
+        "definition": "NOT NULL uncertainties",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "p",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true
+      },
+      {
+        "table_name": "grades",
+        "kind": "u",
+        "definition": "UNIQUE (supersedes_grade_id)",
+        "validated": true
+      },
+      {
+        "table_name": "schema_meta",
+        "kind": "c",
+        "definition": "CHECK ((version = 1))",
+        "validated": true
+      },
+      {
+        "table_name": "schema_meta",
+        "kind": "n",
+        "definition": "NOT NULL version",
+        "validated": true
+      },
+      {
+        "table_name": "schema_meta",
+        "kind": "p",
+        "definition": "PRIMARY KEY (version)",
+        "validated": true
+      },
+      {
+        "table_name": "task_topics",
+        "kind": "f",
+        "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+        "validated": true
+      },
+      {
+        "table_name": "task_topics",
+        "kind": "f",
+        "definition": "FOREIGN KEY (topic_id) REFERENCES topics(id)",
+        "validated": true
+      },
+      {
+        "table_name": "task_topics",
+        "kind": "n",
+        "definition": "NOT NULL task_id",
+        "validated": true
+      },
+      {
+        "table_name": "task_topics",
+        "kind": "n",
+        "definition": "NOT NULL topic_id",
+        "validated": true
+      },
+      {
+        "table_name": "task_topics",
+        "kind": "p",
+        "definition": "PRIMARY KEY (task_id, topic_id)",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "c",
+        "definition": "CHECK ((schema_version = 1))",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "c",
+        "definition": "CHECK ((version > 0))",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "f",
+        "definition": "FOREIGN KEY (family_id) REFERENCES tasks(id)",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "f",
+        "definition": "FOREIGN KEY (previous_task_id) REFERENCES tasks(id)",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL created_at",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL family_id",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL id",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL payload_hash",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL prompt",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL schema_version",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL search_text",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL title",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "n",
+        "definition": "NOT NULL version",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "p",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "u",
+        "definition": "UNIQUE (family_id, version)",
+        "validated": true
+      },
+      {
+        "table_name": "tasks",
+        "kind": "u",
+        "definition": "UNIQUE (previous_task_id)",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "c",
+        "definition": "CHECK ((schema_version = 1))",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL created_at",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL id",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL name",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL name_key",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL payload_hash",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "n",
+        "definition": "NOT NULL schema_version",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "p",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true
+      },
+      {
+        "table_name": "topics",
+        "kind": "u",
+        "definition": "UNIQUE (name_key)",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "c",
+        "definition": "CHECK ((answer_kind = ANY (ARRAY['verbatim'::text, 'summary'::text])))",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "c",
+        "definition": "CHECK ((schema_version = 1))",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "f",
+        "definition": "FOREIGN KEY (based_on_grade_id) REFERENCES grades(id)",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "f",
+        "definition": "FOREIGN KEY (supersedes_trial_id) REFERENCES trials(id)",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "f",
+        "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL answer",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL answer_kind",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL conditions",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL created_at",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL id",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL payload_hash",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL process",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL schema_version",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "n",
+        "definition": "NOT NULL task_id",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "p",
+        "definition": "PRIMARY KEY (id)",
+        "validated": true
+      },
+      {
+        "table_name": "trials",
+        "kind": "u",
+        "definition": "UNIQUE (supersedes_trial_id)",
+        "validated": true
+      }
+    ],
+    "indexes": [
+      {
+        "table_name": "grades",
+        "definition": "CREATE INDEX grades_trial_order ON evalme.grades USING btree (trial_id, created_at, id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "grades",
+        "definition": "CREATE UNIQUE INDEX grades_pkey ON evalme.grades USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "grades",
+        "definition": "CREATE UNIQUE INDEX grades_supersedes_grade_id_key ON evalme.grades USING btree (supersedes_grade_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "schema_meta",
+        "definition": "CREATE UNIQUE INDEX schema_meta_pkey ON evalme.schema_meta USING btree (version)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "task_topics",
+        "definition": "CREATE INDEX task_topics_reverse ON evalme.task_topics USING btree (topic_id, task_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "task_topics",
+        "definition": "CREATE UNIQUE INDEX task_topics_pkey ON evalme.task_topics USING btree (task_id, topic_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "tasks",
+        "definition": "CREATE UNIQUE INDEX tasks_family_id_version_key ON evalme.tasks USING btree (family_id, version)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "tasks",
+        "definition": "CREATE UNIQUE INDEX tasks_pkey ON evalme.tasks USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "tasks",
+        "definition": "CREATE UNIQUE INDEX tasks_previous_task_id_key ON evalme.tasks USING btree (previous_task_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "topics",
+        "definition": "CREATE UNIQUE INDEX topics_name_key_key ON evalme.topics USING btree (name_key)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "topics",
+        "definition": "CREATE UNIQUE INDEX topics_pkey ON evalme.topics USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "trials",
+        "definition": "CREATE INDEX trials_based_on ON evalme.trials USING btree (based_on_grade_id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "trials",
+        "definition": "CREATE INDEX trials_task_order ON evalme.trials USING btree (task_id, created_at, id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "trials",
+        "definition": "CREATE UNIQUE INDEX trials_pkey ON evalme.trials USING btree (id)",
+        "valid": true,
+        "ready": true
+      },
+      {
+        "table_name": "trials",
+        "definition": "CREATE UNIQUE INDEX trials_supersedes_trial_id_key ON evalme.trials USING btree (supersedes_trial_id)",
+        "valid": true,
+        "ready": true
+      }
+    ],
+    "extras": []
+  }
+}

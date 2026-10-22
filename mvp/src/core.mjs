@@ -8,7 +8,7 @@ import {
   uuid,
   fail,
 } from "./core-validation.mjs";
-import { schema, JSON_COLUMNS } from "./providers/schema.mjs";
+import { schema, JSON_COLUMNS, postgresGradeForeignKey } from "./providers/schema.mjs";
 export { EvalmeError } from "./core-validation.mjs";
 export const schemaVersion = 1;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -170,7 +170,7 @@ class Store {
           );
           if (!fk.length)
             await this.db.exec(
-              "ALTER TABLE trials ADD CONSTRAINT trials_based_on_grade_fk FOREIGN KEY(based_on_grade_id) REFERENCES grades(id)",
+              postgresGradeForeignKey,
             );
         }
         await this.query(
