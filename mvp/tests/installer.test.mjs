@@ -14,7 +14,7 @@ test('isolated install, upgrade, uninstall and reinstall preserve learning data 
  install();
  const cmd=join(home,'.local/bin/evalme-mvp');
  const run=(args,code=0)=>{const r=spawnSync(cmd,[...args,'--json'],{env,encoding:'utf8',timeout:45000});assert.equal(r.status,code,r.stdout+r.stderr);return JSON.parse(r.stdout).data;};
- assert.equal(run(['--version']).version,'0.3.0');
+ assert.equal(run(['--version']).version,'0.3.1');
  assert.ok(readFileSync(cmd,'utf8').includes(process.execPath));
  assert.ok(!existsSync(join(home,'.zshrc')));
  run(['init','--provider','sqlite','--non-interactive']);
@@ -23,7 +23,7 @@ test('isolated install, upgrade, uninstall and reinstall preserve learning data 
  const updatedSource=join(home,'upgrade-source');mkdirSync(updatedSource);
  for(const file of ['src','scripts','skills','package.json','npm-shrinkwrap.json'])cpSync(join(source,file),join(updatedSource,file),{recursive:true});
  const template=join(updatedSource,'skills/evalme-mvp/SKILL.md');writeFileSync(template,readFileSync(template,'utf8')+'\nUpgrade template marker\n');
- assert.equal(run(['upgrade','--source',updatedSource]).version,'0.3.0');
+ assert.equal(run(['upgrade','--source',updatedSource]).version,'0.3.1');
  assert.ok(readFileSync(join(home,'.agents/skills/evalme-mvp/SKILL.md'),'utf8').includes('Upgrade template marker'));
  assert.equal(readFileSync(cfg,'utf8'),original);
  const wrapperBefore=readFileSync(cmd,'utf8');

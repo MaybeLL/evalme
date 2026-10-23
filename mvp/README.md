@@ -16,6 +16,8 @@ sh scripts/install.sh --source "$PWD"
 
 ## 初始化与连接
 
+直接运行 `evalme-mvp init` 时，若已有配置，会先展示当前连接并询问是否重新配置，默认保留并退出。此检查仅读取本地配置，不连接数据库或读取密码文件；配置损坏时明确提示，仍需确认替换，并在新连接验证成功后才保存。JSON/非交互调用及完整显式连接参数保留原有行为。
+
 `evalme-mvp init` 提供终端菜单。SQLite 默认 `~/.local/share/evalme-mvp/evalme.sqlite3`；配置默认 `~/.config/evalme-mvp/config.json`。PostgreSQL 可以逐项输入，密码隐藏输入，CLI 自动创建私有凭据。连接/权限/schema 验证失败不替换旧配置，并删除本次临时凭据。重配成功保留先前凭据文件，避免破坏其他配置引用；这些历史凭据不在默认卸载清理范围内。
 
 已有配置切换需确认；非交互需 `--replace-config`，只切换连接，不迁移或删除数据。机器调用仍支持受保护 JSON：

@@ -1,7 +1,7 @@
 import * as p from '@clack/prompts';
 import {isAbsolute,join} from 'node:path';
 import {homedir} from 'node:os';
-import {AppError, invalid} from './config.mjs';
+import {AppError, invalid, privateJson, configPath, connectionTarget} from './config.mjs';
 const output = process.stderr;
 async function answer(prompt) {
   const value = await prompt;
@@ -24,6 +24,26 @@ export async function interactive(flags) {
   if (flags.json || flags['non-interactive'] || !process.stdin.isTTY)
     throw invalid('Non-interactive init requires --provider and connection options.');
   p.intro('EvalMe 初始化', {output});
+  let existing, unreadable=false;
+  try {
+    existing=privateJson(configPath(flags));
+    const valid=existing.provider==='sqlite'
+      ? typeof existing.path==='string' && isAbsolute(existing.path)
+      : existing.provider==='postgres' && ['host','database','user'].every(k=>typeof existing[k]==='string' && existing[k]) && Number.isInteger(existing.port);
+    if(!valid)unreadable=true;
+  } catch(e) {
+    if(e.code!=='CONFIG_NOT_FOUND')unreadable=true;
+    if(e.code==='CONFIG_INVALID')flags._repairConfig=true;
+  }
+  if(existing || unreadable) {
+    const clean=v=>String(v).replace(/[\x00-\x1f\x7f-\x9f]/g,' ');
+    p.note(unreadable ? '已有配置无法读取。可保留并退出，或重新配置连接。'
+      : `当前连接：${existing.provider==='sqlite'?'SQLite':'PostgreSQL'}\n${clean(connectionTarget(existing))}\n重新配置不会清空已有学习数据。`,
+      '检测到已有 EvalMe 配置',{output});
+    const change=await answer(p.confirm({message:'是否重新配置连接？',initialValue:false,active:'重新配置连接',inactive:'保留当前配置并退出',vertical:true,output}));
+    if(!change){p.outro('已保留当前配置。',{output});return false;}
+  }
+
   flags.provider ||= await answer(p.select({message:'你想如何保存学习数据？（↑/↓ 切换，Enter 确认）', output, showInstructions:false,
     options:[{value:'sqlite',label:'在这台电脑上保存',hint:'SQLite，推荐，无需准备数据库'}, {value:'postgres',label:'连接 PostgreSQL',hint:'多台设备共享数据'}]}));
   if (flags.provider === 'sqlite') {

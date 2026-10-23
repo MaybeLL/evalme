@@ -152,6 +152,7 @@ test("real PTY switching SQLite target requires displayed target and explicit co
   initOld(config, old);
   const before = readFileSync(config, "utf8");
   const steps = [
+    {expect:"是否重新配置连接",send:"y\r"},
     ...selectSQLite,
     { expect: "SQLite 文件绝对路径", send: next + "\n" },
   ];
@@ -245,7 +246,7 @@ test('guided empty PostgreSQL needs consent, transient admin, and preserves conf
  await root.query(`CREATE ROLE "${owner}" LOGIN`);await root.query(`CREATE ROLE "${user}" LOGIN`);await root.query(`CREATE DATABASE "${database}"`);
  t.after(async()=>{await root.query(`DROP DATABASE "${database}" WITH (FORCE)`);await root.query(`DROP ROLE "${user}"`);await root.query(`DROP ROLE "${owner}"`);await root.end();});
  initOld(config,join(dir,'old.sqlite'));const before=readFileSync(config,'utf8');
- const steps=[...selectPG,{expect:'PostgreSQL 地址',send:'127.0.0.1\r'},{expect:'端口',send:String(port)+'\r'},
+ const steps=[{expect:'是否重新配置连接',send:'y\r'},...selectPG,{expect:'PostgreSQL 地址',send:'127.0.0.1\r'},{expect:'端口',send:String(port)+'\r'},
  {expect:'数据库名称',send:database+'\r'},{expect:'应用用户名',send:user+'\r'},
  {expect:'数据库密码',send:'RUNTIME_SYNTHETIC\r'},{expect:'TLS 连接方式',send:'\x1b[B\r'}];
  // Reject replacing the old local connection, before any initialization prompt.
@@ -281,4 +282,31 @@ test('deletion PTY shows family scope, defaults to cancel, Ctrl-C preserves data
  const p=tty(config,[{expect:'是否删除题目及全部关联记录',send:'y\r'}],[],['task','delete',r.a2]);
  assert.equal(p.error,null,p.output);assert.equal(p.status,0,p.output);
  const check=await openStore(runtime);assert.equal((await check.query('SELECT * FROM tasks')).length,1);await check.close();
+});
+
+test('existing init defaults to keeping config and Ctrl-C never opens the wizard',t=>{
+ const {dir,config}=fixture(t);initOld(config,join(dir,'old.sqlite'));const before=readFileSync(config);
+ for(const [send,status] of [['\r',0],['\x03',130]]) {
+  const r=tty(config,[{expect:'是否重新配置连接',send}]);
+  assert.equal(r.error,null,r.output);assert.equal(r.status,status,r.output);
+  assert.match(r.output,/检测到已有 EvalMe 配置/);assert.ok(!r.output.includes('你想如何保存学习数据'));
+  assert.deepEqual(readFileSync(config),before);
+ }
+});
+test('existing offline PostgreSQL summary does not read credentials or connect',t=>{
+ const {dir,config}=fixture(t);writeFileSync(config,JSON.stringify({provider:'postgres',host:'127.0.0.1',port:1,database:'offline',user:'app',secret_file:join(dir,'absent-secret'),ssl:false}),{mode:0o600});
+ const r=tty(config,[{expect:'是否重新配置连接',send:'\r'}]);
+ assert.equal(r.error,null,r.output);assert.equal(r.status,0,r.output);assert.match(r.output,/127\.0\.0\.1:1\/offline/);assert.ok(!r.output.includes('无法读取'));
+});
+test('malformed existing config can be kept or explicitly repaired',t=>{
+ const {dir,config}=fixture(t);writeFileSync(config,'{broken PRIVATE_TEXT',{mode:0o600});const before=readFileSync(config);
+ const no=tty(config,[{expect:'是否重新配置连接',send:'\r'}]);assert.equal(no.error,null,no.output);assert.equal(no.status,0);assert.match(no.output,/已有配置无法读取/);assert.ok(!no.output.includes('PRIVATE_TEXT'));assert.deepEqual(readFileSync(config),before);
+ const yes=tty(config,[{expect:'是否重新配置连接',send:'y\r'},...selectSQLite,{expect:'SQLite 文件绝对路径',send:join(dir,'new.sqlite')+'\r'},{expect:'将连接配置替换为',send:'y\r'}]);
+ assert.equal(yes.error,null,yes.output);assert.equal(yes.status,0,yes.output);assert.equal(JSON.parse(readFileSync(config)).provider,'sqlite');
+});
+
+test('JSON init stays noninteractive and does not implicitly replace malformed config',t=>{
+ const {dir,config}=fixture(t);writeFileSync(config,'{broken',{mode:0o600});const before=readFileSync(config);
+ const r=spawnSync(process.execPath,[cli,'init','--provider','sqlite','--path',join(dir,'new.sqlite'),'--replace-config','--config',config,'--json','--non-interactive'],{encoding:'utf8',timeout:5000});
+ assert.equal(r.status,5,r.stdout+r.stderr);assert.equal(JSON.parse(r.stdout).error.code,'CONFIG_INVALID');assert.equal(r.stderr,'');assert.deepEqual(readFileSync(config),before);assert.equal(existsSync(join(dir,'new.sqlite')),false);
 });

@@ -212,7 +212,11 @@ async function initializeSaved(flags, checkpoint) {
       : connection(flags["connection-file"]));
   } else throw invalid("Select sqlite or postgres.");
   if (existsSync(path)) {
-    const before = privateJson(path);
+    let before;
+    try {before=privateJson(path);} catch(e) {
+      if(e.code!=='CONFIG_INVALID' || !flags._repairConfig)throw e;
+      before=null;
+    }
     if (
       JSON.stringify(before) !== JSON.stringify(saved) &&
       !flags["replace-config"]
@@ -221,7 +225,7 @@ async function initializeSaved(flags, checkpoint) {
         "CONFIG_CONFLICT",
         "Configuration differs; use --replace-config to switch without deleting data.",
         4,
-        {previous:connectionTarget(before),next:connectionTarget(saved)},
+        {previous:before?connectionTarget(before):"无法读取的原配置",next:connectionTarget(saved)},
       );
   }
   checkpoint();

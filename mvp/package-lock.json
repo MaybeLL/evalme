@@ -1,12 +1,12 @@
 {
   "name": "evalme-mvp-cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "evalme-mvp-cli",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@clack/prompts": "1.8.1",
         "pg": "8.16.3"

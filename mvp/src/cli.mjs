@@ -194,7 +194,7 @@ export async function main(argv = process.argv.slice(2)) {
     }
     if (key === "id new") return emit({ id: randomUUID() }, flags);
     if (key === "init") {
-      await interactive(flags);
+      if(await interactive(flags) === false)return;
       try {
         while(true) {
           try {return emit(await initialize(flags),flags);}
