@@ -16,7 +16,7 @@ sh scripts/install.sh --source "$PWD"
 
 ## 初始化与连接
 
-直接运行 `evalme-mvp init` 时，若已有配置，会先展示当前连接并询问是否重新配置，默认保留并退出。此检查仅读取本地配置，不连接数据库或读取密码文件；配置损坏时明确提示，仍需确认替换，并在新连接验证成功后才保存。JSON/非交互调用及完整显式连接参数保留原有行为。
+直接运行 `evalme-mvp init` 时，若已有配置，会先展示当前连接并询问是否重新配置，默认保留当前连接，然后检查 Skill。此检查仅读取本地配置，不连接数据库或读取密码文件；配置损坏时明确提示，仍需确认替换，并在新连接验证成功后才保存。JSON/非交互调用不增加 Skill 提问或安装；完整显式连接参数仍跳过连接填写向导。
 
 `evalme-mvp init` 提供终端菜单。SQLite 默认 `~/.local/share/evalme-mvp/evalme.sqlite3`；配置默认 `~/.config/evalme-mvp/config.json`。PostgreSQL 可以逐项输入，密码隐藏输入，CLI 自动创建私有凭据。连接/权限/schema 验证失败不替换旧配置，并删除本次临时凭据。重配成功保留先前凭据文件，避免破坏其他配置引用；这些历史凭据不在默认卸载清理范围内。
 
@@ -33,12 +33,21 @@ evalme-mvp init --provider postgres --connection-file /absolute/app.json --confi
 
 ```sh
 evalme-mvp skill install
-evalme-mvp skill install --force
+evalme-mvp skill install --skills-dir "~/.claude/skills"
+evalme-mvp skill install --skills-dir "~/.codex/skills"
+evalme-mvp skill install --skills-dir "/absolute/My Skills"
+evalme-mvp skill install --skills-dir "/absolute/My Skills" --force
+evalme-mvp skill uninstall --skills-dir "/absolute/My Skills"
+evalme-mvp skill list --json
 evalme-mvp skill uninstall
 evalme-mvp doctor --json
 ```
 
-默认安装到 `~/.agents/skills/evalme-mvp`。兼容参数 `--agent codex` / `--agent pi` 指向同一共享目录。`--cli-path /absolute/launcher` 可显式绑定入口。修改过的受管理文件默认拒绝覆盖；`--force` 先备份到 `~/.local/share/evalme-mvp/skill-backups/`。未知目录和符号链接不会被强行覆盖。Skill 卸载保留额外用户文件，不修改数据库。安装器只验证文件，Pi/Codex 的真实发现仍需新会话验证。
+交互式 `init` 在连接保存成功后检查 Skill；选择保留原连接时也会检查。找到当前版本会显示全部已发现位置和状态，并跳过安装提问；缺失时默认建议安装，旧的未修改版本默认建议更新。可选择 `~/.agents/skills/`、`~/.claude/skills/`、`~/.codex/skills/` 或输入自定义根目录；安装前显示完整目标，实际写入 `<根目录>/evalme-mvp`。取消或安装失败保留数据库配置，修改版和未知目录不会自动覆盖。
+
+`skill list` 与 `doctor` 扫描这三个预设位置及已记录的自定义位置。符号链接展示实际指向，同一实际目录合并显示别名；不沿符号链接执行安装或删除。位置记录在 `~/.local/share/evalme-mvp/skill-locations.json`，成功安装或定向卸载后保留记录以便再次发现；不会遍历磁盘寻找任意目录。多个副本仅展示状态，不自动同步或清理；更新和卸载必须指定目标。
+
+默认安装到 `~/.agents/skills/evalme-mvp`。兼容参数 `--agent codex` / `--agent pi` 在不指定 `--skills-dir` 时仍指向同一共享目录；显式目录优先。`--cli-path /absolute/launcher` 可显式绑定入口。修改过的受管理文件默认拒绝覆盖；`--force` 先备份到 `~/.local/share/evalme-mvp/skill-backups/`。未知目录和符号链接不会被强行覆盖。Skill 卸载只处理指定目录，保留额外用户文件，不修改数据库。程序安装器继续管理默认共享目录，程序升级不自动更新其他副本；其他位置可通过 init 或定向 skill install 更新。程序 uninstall 也只卸载默认共享副本，自定义副本请先定向卸载。安装器只验证文件，Pi/Codex 的真实发现仍需新会话验证。
 
 `doctor` 输出 ready/checks；必需检查失败退出码 5，查询成功退出码 0。外层 ok 表示诊断命令成功执行，data.ready 表示使用环境是否就绪。检查数据库读取及声明权限，不写入合成练习。网络、认证、证书、权限和配置问题分别报告修复建议。
 

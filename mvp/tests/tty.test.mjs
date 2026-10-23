@@ -17,17 +17,21 @@ import os,sys,json,pty,select,time,re,signal,fcntl,termios,struct
 spec=json.loads(sys.argv[1]); pid,fd=pty.fork()
 if pid==0:
  fcntl.ioctl(0,termios.TIOCSWINSZ,struct.pack('HHHH',40,120,0,0))
+ os.environ['HOME']=os.path.dirname(spec['config'])
  os.execv(spec['node'],[spec['node'],spec['cli']]+spec.get('command',['init'])+['--config',spec['config']]+spec.get('args',[]))
-output=''; cursor=0; error=None; status=None
+output=''; cursor=0; error=None; status=None; skill_skipped=False
 def receive(deadline):
- global output,status
+ global output,status,skill_skipped
  while time.monotonic()<deadline:
   ready,_,_=select.select([fd],[],[],0.05)
   if ready:
    try: data=os.read(fd,65536)
    except OSError: return False
    if not data:return False
-   output+=re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', data.decode('utf-8','replace')); return True
+   output+=re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', data.decode('utf-8','replace'))
+   if spec.get('autoSkill',True) and not skill_skipped and ('是否安装 Agent Skill' in output or '是否更新 Agent Skill' in output):
+    os.write(fd,b'n\r');skill_skipped=True
+   return True
  return False
 try:
  for step in spec['steps']:
@@ -56,13 +60,13 @@ function fixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return { dir, config: join(dir, "config.json") };
 }
-function tty(config, steps, args = [], command = ['init']) {
+function tty(config, steps, args = [], command = ['init'], autoSkill = true) {
   const r = spawnSync(
     "python3",
     [
       "-c",
       python,
-      JSON.stringify({ node: process.execPath, cli, config, steps, args, command }),
+      JSON.stringify({ node: process.execPath, cli, config, steps, args, command, autoSkill }),
     ],
     { encoding: "utf8", timeout: 25000 },
   );
@@ -309,4 +313,30 @@ test('JSON init stays noninteractive and does not implicitly replace malformed c
  const {dir,config}=fixture(t);writeFileSync(config,'{broken',{mode:0o600});const before=readFileSync(config);
  const r=spawnSync(process.execPath,[cli,'init','--provider','sqlite','--path',join(dir,'new.sqlite'),'--replace-config','--config',config,'--json','--non-interactive'],{encoding:'utf8',timeout:5000});
  assert.equal(r.status,5,r.stdout+r.stderr);assert.equal(JSON.parse(r.stdout).error.code,'CONFIG_INVALID');assert.equal(r.stderr,'');assert.deepEqual(readFileSync(config),before);assert.equal(existsSync(join(dir,'new.sqlite')),false);
+});
+
+test('init installs Skill to custom root after saving database and later shows recorded path',t=>{
+ const {dir,config}=fixture(t);const root=join(dir,'My Skills');
+ const r=tty(config,[...selectSQLite,{expect:'SQLite 文件绝对路径',send:join(dir,'db.sqlite')+'\r'},
+ {expect:'是否安装 Agent Skill',send:'\r'},{expect:'将 Skill 安装到哪里',send:'\x1b[B\x1b[B\x1b[B\r'},
+ {expect:'Skills 根目录',send:'~/My Skills\r'},{expect:'安装或更新到',send:'\r'}],[],['init'],false);
+ assert.equal(r.error,null,r.output);assert.equal(r.status,0,r.output);assert.ok(existsSync(config));assert.ok(existsSync(join(root,'evalme-mvp/SKILL.md')));
+ const before=readFileSync(config);const again=tty(config,[{expect:'是否重新配置连接',send:'\r'}],[],['init'],false);
+ assert.equal(again.error,null,again.output);assert.equal(again.status,0,again.output);assert.ok(again.output.includes(root));assert.match(again.output,/Skill 已就绪/);assert.ok(!again.output.includes('是否安装 Agent Skill'));assert.deepEqual(readFileSync(config),before);
+});
+test('keeping existing connection can install to Claude; cancellation leaves database intact',t=>{
+ const {dir,config}=fixture(t);initOld(config,join(dir,'db.sqlite'));const before=readFileSync(config);
+ const cancelled=tty(config,[{expect:'是否重新配置连接',send:'\r'},{expect:'是否安装 Agent Skill',send:'\x03'}],[],['init'],false);
+ assert.equal(cancelled.error,null,cancelled.output);assert.equal(cancelled.status,0,cancelled.output);assert.deepEqual(readFileSync(config),before);
+ const r=tty(config,[{expect:'是否重新配置连接',send:'\r'},{expect:'是否安装 Agent Skill',send:'\r'},{expect:'将 Skill 安装到哪里',send:'\x1b[B\r'},{expect:'安装或更新到',send:'\r'}],[],['init'],false);
+ assert.equal(r.error,null,r.output);assert.equal(r.status,0,r.output);assert.ok(existsSync(join(dir,'.claude/skills/evalme-mvp/SKILL.md')));assert.deepEqual(readFileSync(config),before);
+});
+test('init updates pristine old Skill at selected path; modified Skill failure preserves configuration',async t=>{
+ const {dir,config}=fixture(t);const {installSkill}=await import('../src/skill-install.mjs');initOld(config,join(dir,'db.sqlite'));const before=readFileSync(config);
+ const installed=await installSkill({home:dir,cliPath:cli,skillsDir:'~/.codex/skills'});const marker=join(installed.path,'.evalme-install.json');const m=JSON.parse(readFileSync(marker));m.version='0.0.0';writeFileSync(marker,JSON.stringify(m));
+ const updated=tty(config,[{expect:'是否重新配置连接',send:'\r'},{expect:'是否更新 Agent Skill',send:'\r'},{expect:'将 Skill 安装到哪里',send:'\r'},{expect:'安装或更新到',send:'\r'}],[],['init'],false);
+ assert.equal(updated.error,null,updated.output);assert.equal(updated.status,0,updated.output);assert.notEqual(JSON.parse(readFileSync(marker)).version,'0.0.0');
+ writeFileSync(join(installed.path,'SKILL.md'),'my edits');
+ const failed=tty(config,[{expect:'是否重新配置连接',send:'\r'},{expect:'是否安装 Agent Skill',send:'\r'},{expect:'将 Skill 安装到哪里',send:'\x1b[B\x1b[B\r'},{expect:'安装或更新到',send:'\r'}],[],['init'],false);
+ assert.equal(failed.error,null,failed.output);assert.equal(failed.status,0,failed.output);assert.match(failed.output,/Skill 配置未完成/);assert.equal(readFileSync(join(installed.path,'SKILL.md'),'utf8'),'my edits');assert.deepEqual(readFileSync(config),before);
 });

@@ -1,5 +1,4 @@
-import {existsSync, readFileSync, lstatSync} from 'node:fs';
-import {createHash} from 'node:crypto';
+import {existsSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {configPath, readConfig, assertRuntimePrivileges} from './config.mjs';
@@ -7,15 +6,10 @@ import {compatibleNode, runtimeHint} from './runtime.mjs';
 export async function doctor(flags = {}) {
   const checks = [];
   checks.push({name:'runtime',ok:compatibleNode(),version:process.versions.node,path:process.execPath,fix:runtimeHint});
-  const skill = join(homedir(),'.agents/skills/evalme-mvp');
-  let skillOK=false;
-  try {
-    const m=JSON.parse(readFileSync(join(skill,'.evalme-install.json'),'utf8'));
-    skillOK=m.owner==='evalme-mvp' && ['SKILL.md','references/inputs.md'].every(f=>{
-      const s=lstatSync(join(skill,f));return s.isFile()&&!s.isSymbolicLink()&&createHash('sha256').update(readFileSync(join(skill,f))).digest('hex')===m.hashes[f];
-    }) && Boolean(m.cliPath&&existsSync(m.cliPath));
-  } catch {}
-  checks.push({name:'skill',ok:skillOK,path:skill,fix:'运行 evalme-mvp skill install；Pi /reload 或新开 Agent 会话。文件检查不证明宿主已加载。'});
+  let locations=[];
+  try{locations=await (await import('./skill-install.mjs')).scanSkills();}catch{}
+  const readySkills=locations.filter(e=>e.status==='current'&&e.cli_path&&existsSync(e.cli_path));
+  checks.push({name:'skill',ok:readySkills.length>0,path:readySkills[0]?.path||join(homedir(),'.agents/skills/evalme-mvp'),locations,fix:'运行 evalme-mvp skill install --skills-dir <目录>；Pi /reload 或新开 Agent 会话。文件检查不证明宿主已加载。'});
   const wrapper=join(homedir(),'.local/bin/evalme-mvp');
   checks.push({name:'command',ok:existsSync(wrapper),path:wrapper,optional:true,fix:'通过正式安装器安装；也可使用当前 CLI 的绝对路径。'});
   let store;

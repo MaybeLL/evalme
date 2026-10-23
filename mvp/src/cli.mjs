@@ -48,8 +48,9 @@ const COMMANDS = {
   doctor: [],
   upgrade: ["source"],
   uninstall: ["yes", "purge-config"],
-  "skill install": ["agent", "scope", "force", "cli-path"],
-  "skill uninstall": ["agent", "scope", "force"],
+  "skill list": [],
+  "skill install": ["agent", "scope", "force", "cli-path", "skills-dir"],
+  "skill uninstall": ["agent", "scope", "force", "skills-dir"],
   "topic create": ["input"],
   "topic list": ["query", "limit", "cursor"],
   "topic get": [],
@@ -129,7 +130,7 @@ export async function main(argv = process.argv.slice(2)) {
       return emit(
         {
           usage:
-            "evalme-mvp <init|doctor|upgrade|uninstall|db migrate|task delete|id new|skill install/uninstall|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
+            "evalme-mvp <init|doctor|upgrade|uninstall|db migrate|task delete|id new|skill install/uninstall/list|topic create/list/get|task create/revise/list/get|trial record/list/get|grade submit/list/get> [--json]",
           commands: COMMANDS,
           protocol: 1,
         },
@@ -194,10 +195,12 @@ export async function main(argv = process.argv.slice(2)) {
     }
     if (key === "id new") return emit({ id: randomUUID() }, flags);
     if (key === "init") {
-      if(await interactive(flags) === false)return;
+      const {setupSkill}=await import('./skill-prompts.mjs');
+      const finishSkill=()=>setupSkill(flags,{cliPath:process.env.EVALME_LAUNCHER || fileURLToPath(import.meta.url)});
+      if(await interactive(flags) === false){await finishSkill();return;}
       try {
         while(true) {
-          try {return emit(await initialize(flags),flags);}
+          try {const result=await initialize(flags);delete flags._password;delete flags._admin;emit(result,flags);await finishSkill();return;}
           catch(e) {
             if(flags.json || flags['non-interactive'] || !process.stdin.isTTY) throw e;
             if(e.code === 'CONFIG_CONFLICT' && !flags['replace-config']) {
@@ -210,10 +213,15 @@ export async function main(argv = process.argv.slice(2)) {
         }
       } finally {delete flags._password;delete flags._admin;}
     }
+    if(key === "skill list") {
+      const {scanSkills}=await import('./skill-install.mjs');
+      return emit(await scanSkills({cliPath:process.env.EVALME_LAUNCHER || fileURLToPath(import.meta.url)}),flags);
+    }
     if (key === "skill install" || key === "skill uninstall") {
       const { installSkill, uninstallSkill } = await import("./skill-install.mjs");
       return emit(
         await (key === "skill uninstall" ? uninstallSkill : installSkill)({
+          skillsDir: flags["skills-dir"],
           agent: flags.agent,
           scope: flags.scope || "user",
           cliPath: flags["cli-path"] || process.env.EVALME_LAUNCHER || fileURLToPath(import.meta.url),

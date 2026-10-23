@@ -33,7 +33,7 @@ Agent 负责理解和评价，CLI 负责验证与保存。始终经 CLI 查询�
 4. 需要标准时再 task get，读取真实保存的 trial。基于题目和可选标准给出 correct/incorrect/missing/uncertain 判断及证据，经 grade submit 保存后反馈。无标准照样评价，说明判断依据和不确定性，不强推数字分数。评价保存失败保留 trial ID，补交 grade，不重建 trial。
 5. correct/incorrect 引用回答或 user 过程的精确子串；摘要引用仍是摘要。AI 讲解、提示后答对不证明独立掌握。只凭同题改善不宣称迁移或全面掌握；后续独立变式可提供进一步证据。可通过 trial list --task <id> --family 和 grade list --trial <id> 回看，针对旧问题练习时 based_on_grade_id 关联先前评价，不强制立即重练。
 
-兼容声明：安装到共享的 ~/.agents/skills 供支持此路径的 Codex/Pi 加载。安装测试不等于宿主自动发现或真实对话质量验收；Pi 插件不是使用此 Skill 的前提。
+兼容声明：默认安装到 ~/.agents/skills，也可选择 ~/.claude/skills、~/.codex/skills 或自定义 Skills 根目录。可用 CLI skill list 查看已发现的位置；更新或卸载时用 --skills-dir 明确目标目录。仅支持相应目录的 Agent 才会发现该副本。安装测试不等于宿主自动发现或真实对话质量验收；Pi 插件不是使用此 Skill 的前提。
 
 ## 删除整题
 

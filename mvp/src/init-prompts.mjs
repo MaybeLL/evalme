@@ -40,8 +40,8 @@ export async function interactive(flags) {
     p.note(unreadable ? '已有配置无法读取。可保留并退出，或重新配置连接。'
       : `当前连接：${existing.provider==='sqlite'?'SQLite':'PostgreSQL'}\n${clean(connectionTarget(existing))}\n重新配置不会清空已有学习数据。`,
       '检测到已有 EvalMe 配置',{output});
-    const change=await answer(p.confirm({message:'是否重新配置连接？',initialValue:false,active:'重新配置连接',inactive:'保留当前配置并退出',vertical:true,output}));
-    if(!change){p.outro('已保留当前配置。',{output});return false;}
+    const change=await answer(p.confirm({message:'是否重新配置连接？',initialValue:false,active:'重新配置连接',inactive:'保留当前连接',vertical:true,output}));
+    if(!change){p.log.info('已保留当前配置，继续检查 Skill。',{output});return false;}
   }
 
   flags.provider ||= await answer(p.select({message:'你想如何保存学习数据？（↑/↓ 切换，Enter 确认）', output, showInstructions:false,

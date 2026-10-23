@@ -42,3 +42,10 @@ test('doctor identifies bad authentication against live PostgreSQL',{skip:!proce
  const r=run(home,['doctor']);assert.equal(r.status,5);
  assert.equal(r.body.data.checks.find(c=>c.code)?.code,'CONFIG_AUTH_FAILED');assert.ok(!r.stdout.includes('synthetic-wrong-password'));
 });
+
+test('doctor accepts a current Skill at custom location and JSON init does not install one',async t=>{
+ const home=await fixture(t);assert.equal(run(home,['init','--provider','sqlite','--non-interactive']).status,0);
+ const {scanSkills}=await import('../src/skill-install.mjs');assert.ok((await scanSkills({home})).every(e=>e.status==='missing'));
+ const installed=run(home,['skill','install','--skills-dir','~/Agent Skills']);assert.equal(installed.status,0,installed.stdout);
+ const r=run(home,['doctor']);assert.equal(r.status,0,r.stdout);const check=r.body.data.checks.find(c=>c.name==='skill');assert.equal(check.path,join(home,'Agent Skills/evalme-mvp'));assert.equal(check.ok,true);assert.ok(check.locations.some(x=>x.path===check.path));
+});
